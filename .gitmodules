@@ -1,3 +1,6 @@
 [submodule "src/github.com/cespare/go-apachelog"]
 	path = src/github.com/cespare/go-apachelog
 	url = git@github.com:cespare/go-apachelog.git
+[submodule "src/github.com/IMQS/router-core"]
+	path = src/github.com/IMQS/router-core
+	url = git@github.com:IMQS/router-core.git
