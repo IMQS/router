@@ -25,17 +25,13 @@ end
 
 case ARGV[0]
 	when "prepare"	then
-		exec_or_die( "go install github.com/IMQS/router" )
+		exec_or_die( "go install github.com/IMQS/imqsrouter" )
 		FileUtils.cp( "bin/imqsauth.exe", out_dir + '/bin/' )
 	when "test_unit" then
 		# At present the tests behave no differently when run with -race and without,
 		# but it's a likely thing to do in future. ie.. make some stress tests run only with -race off,
 		# because -race uses 10x the memory and is 10x slower.
-		exec_or_die( "go test -race github.com/IMQS/authaus -test.cpu 2" )
-		exec_or_die( "go test -race github.com/IMQS/imqsauth/imqsauth -test.cpu 2" )
-		exec_or_die( "go test github.com/IMQS/authaus -test.cpu 2" )
-		exec_or_die( "go test github.com/IMQS/imqsauth/imqsauth -test.cpu 2" )
-		exec_or_die( "ruby src/github.com/IMQS/imqsauth/resttest.rb" )
+		exec_or_die( "go test github.com/IMQS/router-core -test.cpu 2" )
 	when "test_integration" then
 		# TODO: try logging into our IMQS domain (or whatever's appropriate for a CI box)
 end
