@@ -4,6 +4,3 @@
 [submodule "src/github.com/IMQS/router-core"]
 	path = src/github.com/IMQS/router-core
 	url = git@github.com:IMQS/router-core.git
-[submodule "src/github.com/IMQS/imqsrouter"]
-	path = src/github.com/IMQS/imqsrouter
-	url = https://github.com/LeonLeibbrandt/imqsrouter.git
