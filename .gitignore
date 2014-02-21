@@ -1,4 +1,5 @@
 pkg
+bin
 .hg
 *.sublime-project
 *.sublime-workspace
