@@ -27,7 +27,6 @@ case ARGV[0]
 	when "prepare"	then
 		exec_or_die( "go install github.com/IMQS/router-core" )
 		FileUtils.cp( "bin/router-core.exe", out_dir + '/bin/imqsrouter.exe' )
-		FileUtils.cp( "src/github.com/IMQS/router-core/router_config.json", out_dir + '/bin/' )
 	when "test_unit" then
 		# At present the tests behave no differently when run with -race and without,
 		# but it's a likely thing to do in future. ie.. make some stress tests run only with -race off,
