@@ -13,14 +13,13 @@ after running 'env.bat', so that your GOPATH is correct for GoSublime's sake.
 
 Dependencies
 ------------
-We choose to bake the websocket and winsvc libraries into this project to make 
+We choose to bake the winsvc libraries into this project to make 
 continuous integration easier. These libraries live in a mercurial repo,
 and we choose not to introduce a dependency on git-hg.
 
 To update the Mercurial dependency:
 
 * Run env.bat
-* `go get code.google.com/p/go.net/websocket`
 * `go get code.google.com/p/winsvc`
 
 The Git-based dependencies are all stored using regular git submodules.

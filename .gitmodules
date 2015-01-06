@@ -4,3 +4,6 @@
 [submodule "src/github.com/IMQS/router-core"]
 	path = src/github.com/IMQS/router-core
 	url = git@github.com:IMQS/router-core.git
+[submodule "src/golang.org/x/net"]
+	path = src/golang.org/x/net
+	url = https://go.googlesource.com/net
