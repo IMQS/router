@@ -7,3 +7,6 @@
 [submodule "src/golang.org/x/net"]
 	path = src/golang.org/x/net
 	url = https://go.googlesource.com/net
+[submodule "src/github.com/natefinch/lumberjack"]
+	path = src/github.com/natefinch/lumberjack
+	url = git@github.com:natefinch/lumberjack
