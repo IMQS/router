@@ -10,3 +10,6 @@
 [submodule "src/github.com/natefinch/lumberjack"]
 	path = src/github.com/natefinch/lumberjack
 	url = git@github.com:natefinch/lumberjack
+[submodule "src/github.com/MSOpenTech/azure-sdk-for-go"]
+	path = src/github.com/MSOpenTech/azure-sdk-for-go
+	url = git@github.com:MSOpenTech/azure-sdk-for-go.git
