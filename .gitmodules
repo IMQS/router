@@ -1,15 +1,18 @@
-[submodule "src/github.com/cespare/go-apachelog"]
-	path = src/github.com/cespare/go-apachelog
-	url = git@github.com:cespare/go-apachelog.git
 [submodule "src/github.com/IMQS/router-core"]
 	path = src/github.com/IMQS/router-core
 	url = git@github.com:IMQS/router-core.git
 [submodule "src/golang.org/x/net"]
 	path = src/golang.org/x/net
 	url = https://go.googlesource.com/net
-[submodule "src/github.com/natefinch/lumberjack"]
-	path = src/github.com/natefinch/lumberjack
-	url = git@github.com:natefinch/lumberjack
 [submodule "src/github.com/MSOpenTech/azure-sdk-for-go"]
 	path = src/github.com/MSOpenTech/azure-sdk-for-go
 	url = git@github.com:MSOpenTech/azure-sdk-for-go.git
+[submodule "src/github.com/IMQS/log"]
+	path = src/github.com/IMQS/log
+	url = git@github.com:IMQS/log
+[submodule "src/gopkg.in/natefinch/lumberjack.v2"]
+	path = src/gopkg.in/natefinch/lumberjack.v2
+	url = git@github.com:natefinch/lumberjack
+[submodule "src/github.com/cespare/hutil"]
+	path = src/github.com/cespare/hutil
+	url = git@github.com:cespare/hutil
