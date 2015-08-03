@@ -16,3 +16,6 @@
 [submodule "src/github.com/cespare/hutil"]
 	path = src/github.com/cespare/hutil
 	url = git@github.com:cespare/hutil
+[submodule "src/github.com/IMQS/go-apachelog"]
+	path = src/github.com/IMQS/go-apachelog
+	url = git@github.com:IMQS/go-apachelog
