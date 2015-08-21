@@ -10,6 +10,9 @@
 [submodule "src/github.com/IMQS/log"]
 	path = src/github.com/IMQS/log
 	url = git@github.com:IMQS/log
+[submodule "src/github.com/IMQS/serviceauth"]
+	path = src/github.com/IMQS/serviceauth
+	url = git@github.com:IMQS/serviceauth.git
 [submodule "src/gopkg.in/natefinch/lumberjack.v2"]
 	path = src/gopkg.in/natefinch/lumberjack.v2
 	url = git@github.com:natefinch/lumberjack
