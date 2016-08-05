@@ -22,3 +22,9 @@
 [submodule "src/github.com/IMQS/go-apachelog"]
 	path = src/github.com/IMQS/go-apachelog
 	url = git@github.com:IMQS/go-apachelog
+[submodule "src/github.com/IMQS/httpbridge"]
+	path = src/github.com/IMQS/httpbridge
+	url = git@github.com:IMQS/httpbridge.git
+[submodule "src/github.com/google/flatbuffers"]
+	path = src/github.com/google/flatbuffers
+	url = https://github.com/google/flatbuffers
