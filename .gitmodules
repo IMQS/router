@@ -28,3 +28,6 @@
 [submodule "src/github.com/google/flatbuffers"]
 	path = src/github.com/google/flatbuffers
 	url = https://github.com/google/flatbuffers
+[submodule "src/github.com/IMQS/serviceconfigsgo"]
+	path = src/github.com/IMQS/serviceconfigsgo
+	url = git@github.com:IMQS/serviceconfigsgo.git
