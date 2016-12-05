@@ -26,6 +26,7 @@ end
 case ARGV[0]
 	when "prepare"	then
 		exec_or_die( "go install github.com/IMQS/router-core" )
+	when "copy_out"	then
 		FileUtils.cp( "bin/router-core.exe", out_dir + '/bin/imqsrouter.exe' )
 	when "test_unit" then
 		# At present the tests behave no differently when run with -race and without,
