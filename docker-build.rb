@@ -21,7 +21,7 @@ options = {}
 OptionParser.new do |opts|
 	opts.banner = "Usage: docker-build.rb [options]"
 	opts.on("-t", "--dockertag TAG", "Docker tag to use when pusing the image. Defaults to latest.") do |dt|
-		options[:dockertag] = dt.gsub!("origin/","")
+		options[:dockertag] = dt.gsub("origin/","")
 	end
 	opts.on("-p", "--push", "Push the image to Dockerhub") do |p|
 		options[:push] = p
