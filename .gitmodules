@@ -31,3 +31,6 @@
 [submodule "src/github.com/IMQS/serviceconfigsgo"]
 	path = src/github.com/IMQS/serviceconfigsgo
 	url = git@github.com:IMQS/serviceconfigsgo.git
+[submodule "src/github.com/IMQS/gowinsvc"]
+	path = src/github.com/IMQS/gowinsvc
+	url = git@github.com:IMQS/gowinsvc.git
