@@ -33,7 +33,7 @@ OptionParser.new do |opts|
 end.parse!
 
 puts("Building router binary")
-exec_or_die("docker run --rm -e GOPATH=/usr/src/router -v #{Dir.pwd}:/usr/src/router -w /usr/src/router golang:1.8 go install -ldflags \"-linkmode external -extldflags -static\" github.com/IMQS/router-core
+exec_or_die("docker run --rm -e GOPATH=/usr/src/router -v \"#{Dir.pwd}\":/usr/src/router -w /usr/src/router golang:1.8 go install -ldflags \"-linkmode external -extldflags -static\" github.com/IMQS/router-core
 ")
 
 puts("Building image")
