@@ -1,4 +1,4 @@
-FROM alpine:3.5
+FROM imqs/ubuntu-base
 RUN mkdir -p /var/log/imqs
 COPY bin/router-core /opt/router
 ENV IMQS_CONTAINER=true
