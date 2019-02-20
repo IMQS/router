@@ -15,5 +15,6 @@ FROM imqs/ubuntu-base
 RUN mkdir -p /var/log/imqs
 COPY --from=builder /build/bin/router-core /opt/router
 EXPOSE 80
+EXPOSE 443
 ENTRYPOINT ["wait-for-nc.sh", "config:80", "--", "/opt/router"]
 
