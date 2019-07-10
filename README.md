@@ -1,27 +1,20 @@
 Router
 ======
-This is an umbrella project that wraps up [router-core](https://github.com/IMQS/router-core)
+This is designed to serve as a front-end to your web services, supporting both HTTP
+and Websockets. You configure the router with a config file. This config file
+specifies a set of simple URL rewrite rules. Requests are forwarded onto the
+appropriate backend server, and the response is sent back to the client.
 
 Building
 --------
-* Run `env.bat`
-* Run `go install github.com/IMQS/router-core`
-This will leave you with the executable `bin/router-core`
+* Run `go build`
 
-To run SublimeText, you'll want to launch it from the command line,
-after running 'env.bat', so that your GOPATH is correct for GoSublime's sake.
+Running
+* Run `go run main.go`
 
-Dependencies
-------------
-We choose to bake the winsvc libraries into this project to make 
-continuous integration easier. These libraries live in a mercurial repo,
-and we choose not to introduce a dependency on git-hg.
-
-To update the Mercurial dependency:
-
-* Run env.bat
-* `go get code.google.com/p/winsvc`
-
-The Git-based dependencies are all stored using regular git submodules.
-To update them, just follow the regular method to update a submodule
-inside a git repository.
+Why?
+----
+We needed a performant and well-behaved front door to all of our services which
+could forward HTTP as well as Websockets. Nginx fits this bill, but since we
+need to run on Windows, Nginx is a non-starter. We tried for some time to get
+Apache to do this job, but we failed to get Apache to robustly forward websockets.
