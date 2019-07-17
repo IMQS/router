@@ -366,6 +366,10 @@ func (s *Server) forwardHttp(w http.ResponseWriter, req *http.Request, newurl st
 	cleaned.Proto = req.Proto
 	cleaned.ContentLength = req.ContentLength
 
+	if remoteAddrNoPort, _, err := net.SplitHostPort(req.RemoteAddr); err == nil {
+		cleaned.Header["X-Forwarded-For"] = []string{remoteAddrNoPort}
+	}
+
 	s.addXOriginalPath(req, cleaned)
 
 	resp, err := s.httpTransport.RoundTrip(cleaned)
