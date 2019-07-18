@@ -291,7 +291,7 @@ func authInjectYellowfin(log *log.Logger, w http.ResponseWriter, req *http.Reque
 
 		logoutResp, err := http.DefaultClient.Do(logoutReq)
 		if err != nil {
-			log.Errorf("Error logging out of IMQS", err)
+			log.Errorf("Error logging out of IMQS: %v", err)
 			http.Error(w, err.Error(), http.StatusGatewayTimeout)
 			return false
 		}

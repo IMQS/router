@@ -10,3 +10,4 @@ bin
 router/router-access-test.log
 router/router-error-test.log
 .idea
+/router.exe

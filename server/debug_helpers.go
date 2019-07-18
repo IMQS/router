@@ -30,7 +30,7 @@ func printRequest(req *http.Request, title string) {
 	fmt.Printf("Close %v\n", req.Close)
 	fmt.Printf("Host %s\n\n\n", req.Host)
 	fmt.Printf("RequestURI %s\n\n\n", req.RequestURI)
-	fmt.Println("#############################\n\n")
+	fmt.Printf("#############################\n\n")
 }
 
 func printResponse(resp *http.Response, title string) {
@@ -43,7 +43,7 @@ func printResponse(resp *http.Response, title string) {
 	fmt.Printf("TransferEncoding %s\n", resp.TransferEncoding)
 	fmt.Printf("Close %v\n", resp.Close)
 	printHeader(resp.Trailer)
-	fmt.Println("=====================\n\n")
+	fmt.Printf("=====================\n\n")
 }
 
 func printURL(url *url.URL) {
