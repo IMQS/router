@@ -35,7 +35,6 @@ need to, because the Go test framework launches a separate process for each test
 import (
 	"flag"
 	"fmt"
-	"golang.org/x/net/websocket"
 	"html"
 	"io/ioutil"
 	"log"
@@ -44,6 +43,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"golang.org/x/net/websocket"
 )
 
 const mainConfig = `
@@ -63,7 +64,7 @@ const mainConfig = `
 		"/test1/(.*)":				"{PORT5000}/test1/$1",
 		"/test2/(.*)":				"{PORT5000}/redirect2/$1",
 		"/test3/(.*)":				"{PORT5000}/$1",
-		"/nominatim/(.*)":			"http://nominatim.openstreetmap.org/$1",
+		"/nominatim/(.*)":			"https://nominatim.openstreetmap.org/$1",
 		"/geonames/(.*)":			"http://api.geonames.org/geonames/$1",
 		"/wws/(.*)":				"ws://127.0.0.1:5100/wws/$1"
 	}
@@ -109,7 +110,7 @@ func doHttpFunc(t *testing.T, method, url, body string, verifyBodyFunc func(*tes
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("Request '%v' failed with: %v", url, err)
 	}
 	body_response, err := ioutil.ReadAll(resp.Body)
 	if err != nil {

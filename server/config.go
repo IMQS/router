@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/IMQS/serviceconfigsgo"
+	serviceconfig "github.com/IMQS/serviceconfigsgo"
 )
 
 /*
@@ -62,7 +62,11 @@ Example configuration file:
 		"/yellowfin/(.*)": "{YELLOWFIN}/$1",					Transparent authentication to Yellowfin
 		"/telemetry/(.*)": "ws://127.0.0.1:2001/$1",			Websocket target
 		"/crud/(.*)": "httpbridge://2013/$1",					HttpBridge on port 2013. Note that no host is specified - only the port (2013 in this example).
-		"/(.*)": "http://127.0.0.1/www/$1"						This will end up catching anything that doesn't match one of the more specific routes
+		"/(.*)": "http://127.0.0.1/www/$1",						This will end up catching anything that doesn't match one of the more specific routes
+		"/extile/(.*)": {                                       This long form is required when the hostname is not specified in the replacement text
+			"Target": "http://$1",
+			"ValidHosts": ["tile.mapbox.com", "tile.thunderforest.com"]
+		}
 	},
 }
 
@@ -96,7 +100,7 @@ type Config struct {
 	DebugRoutes bool
 	HTTP        ConfigHTTP
 	Targets     map[string]ConfigTarget
-	Routes      map[string]string
+	Routes      map[string]interface{} // Value is either a string or ConfigRoute
 }
 
 type ConfigHTTP struct {
@@ -111,6 +115,11 @@ type ConfigHTTP struct {
 	ResponseHeaderTimeout int
 	RedirectHTTP          bool
 	AutomaticGzip         automaticGzip
+}
+
+type ConfigRoute struct {
+	Target     string   // The same "target" value that is usually on the right side of a simple string-to-string { "src": "target" } route.
+	ValidHosts []string // If Target has no explicit hostname (eg "http://$1"), then only hosts in ValidHosts are allowed
 }
 
 type automaticGzip struct {
@@ -153,7 +162,7 @@ func (h *ConfigHTTP) GetPort() uint16 {
 func (c *Config) Reset() {
 	*c = Config{}
 	c.Targets = make(map[string]ConfigTarget)
-	c.Routes = make(map[string]string)
+	c.Routes = make(map[string]interface{})
 }
 
 // Return nil if the configuration passes sanity and integrity checks
@@ -162,10 +171,21 @@ func (c *Config) verify() error {
 		return fmt.Errorf("Can't serve HTTP and HTTPS on a single port (%v)", c.HTTP.Port)
 	}
 
-	for match, replace := range c.Routes {
+	for match, replaceAny := range c.Routes {
+		replace := ""
+		replace, ok := replaceAny.(string)
+		if !ok {
+			ct, ok := replaceAny.(map[string]interface{})
+			if !ok {
+				return fmt.Errorf("Match %v has invalid value type. Must be either a string, or an object with 'Target' and 'ValidHosts'", match)
+			}
+			replace, ok = ct["Target"].(string)
+		}
+
 		if len(match) == 0 || match[0] != '/' {
 			return fmt.Errorf("Match must start with '/' (%v -> %v)", match, replace)
 		}
+
 		if len(replace) == 0 {
 			return fmt.Errorf("Replacement URL (%v -> %v) may not be empty", match, replace)
 		}

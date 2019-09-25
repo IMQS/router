@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"regexp"
@@ -63,10 +64,11 @@ type targetPassThroughAuth struct {
 
 // A route that maps from incoming URL to a target URL
 type route struct {
-	match    string
-	match_re *regexp.Regexp // Parsed regular expression of 'match'
-	replace  string
-	target   *target
+	match      string
+	match_re   *regexp.Regexp // Parsed regular expression of 'match'
+	replace    string
+	target     *target
+	validHosts []*regexp.Regexp // If not empty, then the target hostname must be one of these regexes
 }
 
 func parse_scheme(targetUrl string) scheme {
@@ -87,6 +89,15 @@ func parse_scheme(targetUrl string) scheme {
 
 func (r *route) scheme() scheme {
 	return parse_scheme(r.target.baseUrl)
+}
+
+func (r *route) isHostValid(newURL *url.URL) bool {
+	for _, h := range r.validHosts {
+		if h.Match([]byte(newURL.Host)) {
+			return true
+		}
+	}
+	return false
 }
 
 // Router configuration when live.
@@ -176,6 +187,16 @@ func (r *routeSet) processRoute(uri *url.URL) (newurl string, requirePermission 
 
 	rewritten := route.match_re.ReplaceAllString(uri.RequestURI(), route.target.baseUrl+route.replace)
 
+	if len(route.validHosts) != 0 {
+		newURL, err := url.Parse(rewritten)
+		if err != nil {
+			return "", "", nil
+		}
+		if !route.isHostValid(newURL) {
+			return "", "", nil
+		}
+	}
+
 	return rewritten, route.target.requirePermission, &route.target.auth
 }
 
@@ -235,6 +256,29 @@ func (r *routeSet) verifyHttpBridgeURLs() error {
 	return nil
 }
 
+func parseValidHosts(r *ConfigRoute) ([]*regexp.Regexp, error) {
+	res := []*regexp.Regexp{}
+	for _, v := range r.ValidHosts {
+		if len(v) == 0 {
+			return nil, fmt.Errorf("ValidHosts entry may not be an empty string")
+		}
+		// Make sure the regex ends with a terminator. If we don't do this, then it's trivial to
+		// extend a valid hostname, even with a port. For example, the hostname "maps" could be
+		// changed to "maps:8080", which might be a vulnerable port. Or, "maps" could be extended
+		// to "maps.google.com".
+		// I can't think of a case where prefix extension would be bad.
+		if v[len(v)-1] != '$' {
+			v += "$"
+		}
+		re, err := regexp.Compile(v)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to compile regex '%v': %v", v, err)
+		}
+		res = append(res, re)
+	}
+	return res, nil
+}
+
 // Turn a configuration into a runnable urlTranslator
 func newUrlTranslator(config *Config) (urlTranslator, error) {
 	rs := &routeSet{}
@@ -258,26 +302,55 @@ func newUrlTranslator(config *Config) (urlTranslator, error) {
 		targets[name] = t
 	}
 
-	for match, replace := range config.Routes {
+	for match, replaceAny := range config.Routes {
+		// replace must be either a string or a ConfigRoute
+		configRoute := ConfigRoute{}
+		if str, ok := replaceAny.(string); ok {
+			// Right side is a string. This is simple
+			configRoute.Target = str
+		} else if any, ok := replaceAny.(map[string]interface{}); ok {
+			// And here we do a little hack, serializing back to JSON, and then
+			// from that JSON, we go to ConfigRoute.
+			str, _ := json.Marshal(any)
+			if err := json.Unmarshal(str, &configRoute); err != nil {
+				return nil, fmt.Errorf("Error decoding route %v: %v", match, err)
+			}
+		}
 		route := &route{}
 		route.match = match
-		named_target, named_suffix := split_named_target(replace)
+		if len(configRoute.ValidHosts) != 0 {
+			var err error
+			route.validHosts, err = parseValidHosts(&configRoute)
+			if err != nil {
+				return nil, fmt.Errorf("In route for '%v': %v", match, err)
+			}
+		}
+		named_target, named_suffix := split_named_target(configRoute.Target)
 		if len(named_target) != 0 {
+			// Named target, which comes from the "Targets" section of the config file
 			if targets[named_target] == nil {
 				return nil, fmt.Errorf("Route target (%v) not defined", named_target)
 			}
 			route.target = targets[named_target]
 			route.replace = named_suffix
 		} else {
-			parsedUrl, errUrl := url.Parse(replace)
+			// An inline target, which is just a string, or (sometimes) a ConfigRoute object
+			parsedUrl, errUrl := url.Parse(configRoute.Target)
 			if errUrl != nil {
-				return nil, fmt.Errorf("Route replacement URL format incorrect %v:%v", replace, errUrl)
+				return nil, fmt.Errorf("Route replacement URL format incorrect %v:%v", configRoute.Target, errUrl)
 			}
 			route.target = newTarget()
 			route.target.useProxy = false
 			route.target.baseUrl = parsedUrl.Scheme + "://" + parsedUrl.Host
 			route.replace = parsedUrl.Path
+			// Assume that the presence of a dollar in the hostname means that the hostname is coming from
+			// the src URL. This is a security concern, so we need to make sure that such routes have a whitelist
+			// of hostnames that they are allowed to target.
+			if strings.Index(parsedUrl.Host, "$") != -1 && len(route.validHosts) == 0 {
+				return nil, fmt.Errorf("Route %v needs to have a list of ValidHosts", match)
+			}
 		}
+		// fmt.Printf("Route %v: %v\n", route.match, route.target.baseUrl)
 		rs.routes = append(rs.routes, route)
 	}
 
