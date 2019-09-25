@@ -181,7 +181,14 @@ func (r *routeSet) processRoute(uri *url.URL) (newurl string, requirePermission 
 
 func (r *routeSet) getProxy(errLog *log.Logger, host string) (*url.URL, error) {
 	if r.targetHash[host] == nil {
-		errLog.Errorf("Nil target pointer found in hash for host %v", host)
+		// We initially thought that this should be an error, because it means that the router is
+		// connecting to a host that we haven't explicitly defined inside our 'targets' list in
+		// the router config. This was a fine assumption in 2011.
+		// However, we now route to many dockerized hostnames (ie a hostname per service),
+		// and we also allow the router to fetch arbitrary traffic, for example through the route:
+		//   "/albjs/extile/(.*)": "http://$1",
+		// So, long story short - this is not an error.
+		//errLog.Errorf("Nil target pointer found in hash for host %v", host)
 		return nil, nil
 	}
 	if !r.targetHash[host].useProxy {
