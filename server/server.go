@@ -80,6 +80,14 @@ func NewServer(config *Config) (*Server, error) {
 		return s.translator.getProxy(s.errorLog, req.URL.Host)
 	}
 
+	// Set both the host and port as system config variables
+	hostname,err := os.Hostname()
+	if err != nil {
+		return nil, err
+	}
+	if err := serviceconfig.AddSystemVariableToConfigService("router_http_host", hostname); err != nil {
+		return nil, err
+	}
 	if err := serviceconfig.AddSystemVariableToConfigService("router_http_port", getRouterPort(s.configHttp.Port)); err != nil {
 		return nil, err
 	}
