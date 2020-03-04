@@ -38,6 +38,10 @@ func realMain() (result int) {
 		panic(fmt.Errorf("Error loading '%s': %v", *configFile, err))
 	}
 
+	if os.Getenv("DISABLE_HTTPS_REDIRECT") == "1" {
+		config.HTTP.RedirectHTTP = false
+	}
+
 	if *showHttpPort {
 		fmt.Printf("%v", config.HTTP.GetPort())
 		result = 0
