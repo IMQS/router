@@ -19,7 +19,7 @@ Example configuration file:
 	"LogLevel": "info",											The log level of the error log. Defaults to "info". Valid values are "trace", "debug", "info", "warn", "error"
 	"DebugRoutes": true,										Log every match attempt to the error log.
 	"HTTP": {
-		"Port": 80,												Primary HTTP port
+		"Port": 80,												Primary HTTP port. Env var HTTP_PORT overrides this.
 		"SecondaryPort": 8080,									One can optionally listen for HTTP on two ports
 		"EnableHTTPS": true,									Enable HTTPS
 		"RedirectHTTP": true,									Redirect any domain request to HTTP(port 80) to use HTTPS(port 443) to force secure connection to user. Env var DISABLE_HTTPS_REDIRECT=1 disables this.

@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/IMQS/gowinsvc/service"
 	"github.com/IMQS/router/server"
@@ -40,6 +41,15 @@ func realMain() (result int) {
 
 	if os.Getenv("DISABLE_HTTPS_REDIRECT") == "1" {
 		config.HTTP.RedirectHTTP = false
+	}
+
+	envHttpPort := os.Getenv("HTTP_PORT")
+	if envHttpPort != "" {
+		port, err := strconv.ParseInt(envHttpPort, 10, 64)
+		if err != nil {
+			panic(fmt.Errorf("Invalid HTTP_PORT environment variable '%v'", envHttpPort))
+		}
+		config.HTTP.Port = uint16(port)
 	}
 
 	if *showHttpPort {
