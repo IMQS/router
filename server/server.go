@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
 	// "github.com/cespare/hutil/apachelog" // Newer, but doesn't support websockets
 	apachelog "github.com/IMQS/go-apachelog" // Older, but supports websockets. Forked to include time zone in access logs.
 	"github.com/IMQS/httpbridge/go/src/httpbridge"
@@ -81,7 +82,7 @@ func NewServer(config *Config) (*Server, error) {
 	}
 
 	// Set both the host and port as system config variables
-	hostname,err := os.Hostname()
+	hostname, err := os.Hostname()
 	if err != nil {
 		return nil, err
 	}
@@ -591,7 +592,7 @@ func (s *Server) addXOriginalPath(original *http.Request, modified *http.Request
 // We make a round-trip to imqsauth here to check the credentials of the incoming request.
 // This adds about a 0.5ms latency to the request. It might be worthwhile to embed
 // imqsauth inside imqsrouter.
-func (s *Server) authorize(w http.ResponseWriter, req *http.Request, requirePermission string) (authData *serviceauth.ImqsAuthResponse, authOK bool) {
+func (s *Server) authorize(w http.ResponseWriter, req *http.Request, requirePermission string) (authData *serviceauth.Token, authOK bool) {
 	if requirePermission == "" {
 		return nil, true
 	}

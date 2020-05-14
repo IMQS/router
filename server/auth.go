@@ -64,7 +64,7 @@ const yellowfinTokenLifetime = 30 * 24 * time.Hour
 
 // Returns true if the request should continue to be passed through the router
 // If you return false, then you must already have sent an appropriate error response to 'w'.
-func authPassThrough(log *log.Logger, w http.ResponseWriter, req *http.Request, authData *serviceauth.ImqsAuthResponse, target *targetPassThroughAuth) bool {
+func authPassThrough(log *log.Logger, w http.ResponseWriter, req *http.Request, authData *serviceauth.Token, target *targetPassThroughAuth) bool {
 	switch target.config.Type {
 	case AuthPassThroughNone:
 		return true
@@ -121,7 +121,7 @@ func authInjectSitePro(log *log.Logger, w http.ResponseWriter, req *http.Request
 	return true
 }
 
-func authInjectCouchDB(log *log.Logger, w http.ResponseWriter, req *http.Request, authData *serviceauth.ImqsAuthResponse, target *targetPassThroughAuth) bool {
+func authInjectCouchDB(log *log.Logger, w http.ResponseWriter, req *http.Request, authData *serviceauth.Token, target *targetPassThroughAuth) bool {
 	// Allow pings to the CouchDB service
 	if req.URL.Path == "/userstorage/" {
 		return true
@@ -134,7 +134,7 @@ func authInjectCouchDB(log *log.Logger, w http.ResponseWriter, req *http.Request
 	userIDPath, _ := strconv.Atoi(userIDSplitPath[0])
 
 	// Ensure logged-in user can only access his own data
-	if authData.UserId == userIDPath {
+	if authData.UserID == userIDPath {
 		return true
 	}
 	return false
@@ -226,7 +226,7 @@ func injectYellowfinCookies(req *http.Request, tok *yellowfinToken) {
 	})
 }
 
-func authInjectYellowfin(log *log.Logger, w http.ResponseWriter, req *http.Request, authData *serviceauth.ImqsAuthResponse, target *targetPassThroughAuth) bool {
+func authInjectYellowfin(log *log.Logger, w http.ResponseWriter, req *http.Request, authData *serviceauth.Token, target *targetPassThroughAuth) bool {
 	if authData == nil {
 		log.Errorf("For Yellowfin transparent authentication, you must also enforce authorization")
 		http.Error(w, "Not authorized", http.StatusUnauthorized)
@@ -382,7 +382,7 @@ func authInjectYellowfin(log *log.Logger, w http.ResponseWriter, req *http.Reque
 	return false
 }
 
-func authYellowfinLogin(log *log.Logger, w http.ResponseWriter, req *http.Request, authData *serviceauth.ImqsAuthResponse, parameters yellowfinLoginParameters) *yellowfinToken {
+func authYellowfinLogin(log *log.Logger, w http.ResponseWriter, req *http.Request, authData *serviceauth.Token, parameters yellowfinLoginParameters) *yellowfinToken {
 	paramsBytes, err := json.Marshal(parameters)
 	if err != nil {
 		log.Errorf("Error logging in to yellowfin. Login parameters Invalid: %v", err)
