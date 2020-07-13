@@ -694,13 +694,18 @@ func copyCookieToMSHTTP(org *http.Cookie) *http.Cookie {
 func copyheadersIn(srcHost string, src http.Header, dstHost string, dst http.Header) {
 	for k, vv := range src {
 		for _, v := range vv {
-			if k == "Location" {
-				// Example
-				// Original  Location		http://example.com/files/abc
-				// Rewritten Location		http://127.0.0.1:2005/abc
-				// -- I'm not sure why we do this -- If in doubt, just delete this. It seems wrong.
-				v = strings.Replace(v, srcHost, dstHost, 1)
-			}
+			// [2020-07-02 BMH]
+			// I'm commenting this out, along with the same logic in copyheadersOut, because
+			// this really just seems wrong.
+			/*
+				if k == "Location" {
+					// Example
+					// Original  Location		http://example.com/files/abc
+					// Rewritten Location		http://127.0.0.1:2005/abc
+					// -- I'm not sure why we do this -- If in doubt, just delete this. It seems wrong.
+					v = strings.Replace(v, srcHost, dstHost, 1)
+				}
+			*/
 			if k == "Connection" && v == "close" {
 				// See detailed explanation in top-level function comment
 				continue
@@ -713,15 +718,22 @@ func copyheadersIn(srcHost string, src http.Header, dstHost string, dst http.Hea
 func copyheadersOut(srcHost string, src http.Header, dstHost string, dst http.Header, isHTTPS bool) {
 	for k, vv := range src {
 		for _, v := range vv {
-			if k == "Location" {
-				// Some servers will send a Location header, but that Location will be an internal network address, so we
-				// need to rewrite it to be an external address. It may be wiser to just strip the absolute portion of Location away,
-				// just leaving a relative URL. This is all for Yellowfin's sake.
-				v = strings.Replace(v, srcHost, dstHost, 1)
-				if isHTTPS && strings.Index(v, "http:") == 0 {
-					v = strings.Replace(v, "http:", "https:", 1)
+			// [2020-07-02 BMH]
+			// I'm commenting this out, because it's causing problems with my OAuth code for DTPW, and
+			// we're not longer using DTPW. This code was retarded anyway. It should have parsed the URL,
+			// and then replaced only the hostname. This bulk string replacement caused it to screw up
+			// the Path of the URL, and took me a while to figure out how this happened!
+			/*
+				if k == "Location" {
+					// Some servers will send a Location header, but that Location will be an internal network address, so we
+					// need to rewrite it to be an external address. It may be wiser to just strip the absolute portion of Location away,
+					// just leaving a relative URL. This is all for Yellowfin's sake.
+					v = strings.Replace(v, srcHost, dstHost, 1)
+					if isHTTPS && strings.Index(v, "http:") == 0 {
+						v = strings.Replace(v, "http:", "https:", 1)
+					}
 				}
-			}
+			*/
 			dst.Add(k, v)
 		}
 	}
