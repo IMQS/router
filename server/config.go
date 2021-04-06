@@ -44,13 +44,6 @@ Example configuration file:
 				"Username": "username@example.com",
 				"Password": "mypassword"
 			}
-		},
-		"YELLOWFIN": {											Demonstrates the "Yellowfin" transparent authentication system
-			"URL": "http://yellowfinserver.example.com",
-			"RequirePermission": "enabled",
-			"PassThroughAuth": {
-				"Type": "Yellowfin"
-			}
 		}
 	},
 	"Routes": {
@@ -59,7 +52,6 @@ Example configuration file:
 		"/docs/(.*)": "https://docs.example.com/$1",
 		"/about/(.*)": "http://127.0.0.1:2001/$1",
 		"/3rdparty/(.*)": "{THIRDPARTY}/$1",					Transparent authentication to PureHub
-		"/yellowfin/(.*)": "{YELLOWFIN}/$1",					Transparent authentication to Yellowfin
 		"/telemetry/(.*)": "ws://127.0.0.1:2001/$1",			Websocket target
 		"/crud/(.*)": "httpbridge://2013/$1",					HttpBridge on port 2013. Note that no host is specified - only the port (2013 in this example).
 		"/(.*)": "http://127.0.0.1/www/$1",						This will end up catching anything that doesn't match one of the more specific routes
@@ -81,15 +73,14 @@ in terms of the number of slashes in the prefix, is 10. In other words prefixes 
 type AuthPassThroughType string
 
 const (
-	AuthPassThroughNone      AuthPassThroughType = ""
-	AuthPassThroughPureHub                       = "PureHub"
-	AuthPassThroughYellowfin                     = "Yellowfin"
-	AuthPassThroughSitePro                       = "SitePro"
-	AuthPassThroughECS                           = "ECS"
-	AuthPassThroughCouchDB                       = "CouchDB"
-	serviceConfigFileName                        = "router-config.json"
-	serviceConfigVersion                         = 1
-	serviceName                                  = "ImqsRouter"
+	AuthPassThroughNone    AuthPassThroughType = ""
+	AuthPassThroughPureHub                     = "PureHub"
+	AuthPassThroughSitePro                     = "SitePro"
+	AuthPassThroughECS                         = "ECS"
+	AuthPassThroughCouchDB                     = "CouchDB"
+	serviceConfigFileName                      = "router-config.json"
+	serviceConfigVersion                       = 1
+	serviceName                                = "ImqsRouter"
 )
 
 type Config struct {
@@ -143,7 +134,7 @@ type ConfigTarget struct {
 }
 
 // {FOO}/bar -> ( FOO, /bar)
-func split_named_target(targetURL string) (string, string) {
+func splitNamedTarget(targetURL string) (string, string) {
 	open := strings.Index(targetURL, "{")
 	close := strings.Index(targetURL, "}")
 	if open != 0 || close < 1 {
@@ -191,15 +182,15 @@ func (c *Config) verify() error {
 		}
 
 		if replace[0] == '{' {
-			named_target, _ := split_named_target(replace)
-			if named_target == "" {
+			namedTarget, _ := splitNamedTarget(replace)
+			if namedTarget == "" {
 				return fmt.Errorf("URL target format (%v) not recognized", replace)
 			} else {
-				if _, exist := c.Targets[named_target]; !exist {
-					return fmt.Errorf("URL target %v not defined", named_target)
+				if _, exist := c.Targets[namedTarget]; !exist {
+					return fmt.Errorf("URL target %v not defined", namedTarget)
 				}
 			}
-		} else if parse_scheme(replace) == scheme_unknown {
+		} else if parseScheme(replace) == schemeUnknown {
 			return fmt.Errorf("Unrecognized URL scheme (%v). Must be one of http://, https://, ws://, httpbridge://, {TARGET}", replace)
 		}
 	}
@@ -207,7 +198,7 @@ func (c *Config) verify() error {
 		if strings.ToUpper(name) != name {
 			return fmt.Errorf("Target names must be upper case (%v)", name)
 		}
-		if parse_scheme(target.URL) == scheme_unknown {
+		if parseScheme(target.URL) == schemeUnknown {
 			return fmt.Errorf("Unrecognized URL scheme (%v). Must be one of http://, https://, ws://, httpbridge://", target.URL)
 		}
 	}
@@ -230,9 +221,9 @@ func (c *Config) LoadFile(filename string) error {
 	return c.verify()
 }
 
-func (c *Config) LoadString(json_config string) error {
+func (c *Config) LoadString(jsonConfig string) error {
 	c.Reset()
-	if err := json.Unmarshal([]byte(json_config), c); err != nil {
+	if err := json.Unmarshal([]byte(jsonConfig), c); err != nil {
 		return err
 	}
 	c.populateGzipWhitelist()

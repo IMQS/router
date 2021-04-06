@@ -17,12 +17,12 @@ import (
 type scheme string
 
 const (
-	scheme_unknown    scheme = ""
-	scheme_ws                = "ws"
-	scheme_http              = "http"
-	scheme_https             = "https"
-	scheme_httpbridge        = "httpbridge"
-	scheme_udp               = "udp"
+	schemeUnknown    scheme = ""
+	schemeWS                = "ws"
+	schemeHTTP              = "http"
+	schemeHTTPS             = "https"
+	schemeHTTPBridge        = "httpbridge"
+	schemeUDP               = "udp"
 )
 
 // A target URL
@@ -39,10 +39,6 @@ Usage of targetPassThroughAuth fields:
 PureHub:
 	token
 	tokenExpires
-
-Yellowfin:
-	tokenMap
-	tokenLock
 
 SitePro:
 	none
@@ -65,30 +61,30 @@ type targetPassThroughAuth struct {
 // A route that maps from incoming URL to a target URL
 type route struct {
 	match      string
-	match_re   *regexp.Regexp // Parsed regular expression of 'match'
+	matchRe    *regexp.Regexp // Parsed regular expression of 'match'
 	replace    string
 	target     *target
 	validHosts []*regexp.Regexp // If not empty, then the target hostname must be one of these regexes
 }
 
-func parse_scheme(targetUrl string) scheme {
+func parseScheme(targetUrl string) scheme {
 	switch {
 	case targetUrl[0:3] == "ws:":
-		return scheme_ws
+		return schemeWS
 	case targetUrl[0:4] == "udp:":
-		return scheme_udp
+		return schemeUDP
 	case targetUrl[0:5] == "http:":
-		return scheme_http
+		return schemeHTTP
 	case targetUrl[0:6] == "https:":
-		return scheme_https
+		return schemeHTTPS
 	case targetUrl[0:11] == "httpbridge:":
-		return scheme_httpbridge
+		return schemeHTTPBridge
 	}
-	return scheme_unknown
+	return schemeUnknown
 }
 
 func (r *route) scheme() scheme {
-	return parse_scheme(r.target.baseUrl)
+	return parseScheme(r.target.baseUrl)
 }
 
 func (r *route) isHostValid(newURL *url.URL) bool {
@@ -163,7 +159,7 @@ func (r *routeSet) computeCaches() error {
 
 		allLengths[len(key)] = true
 		var err error
-		route.match_re, err = regexp.Compile(route.match)
+		route.matchRe, err = regexp.Compile(route.match)
 		if err != nil {
 			return fmt.Errorf("Failed to compile regex '%v': %v", route.match, err)
 		}
@@ -185,7 +181,7 @@ func (r *routeSet) processRoute(uri *url.URL) (newurl string, requirePermission 
 		return "", "", nil
 	}
 
-	rewritten := route.match_re.ReplaceAllString(uri.RequestURI(), route.target.baseUrl+route.replace)
+	rewritten := route.matchRe.ReplaceAllString(uri.RequestURI(), route.target.baseUrl+route.replace)
 
 	if len(route.validHosts) != 0 {
 		newURL, err := url.Parse(rewritten)
@@ -241,7 +237,7 @@ func (r *routeSet) match(uri *url.URL) *route {
 // Ensure that httpbridge targets specify the httpbridge backend port number.
 func (r *routeSet) verifyHttpBridgeURLs() error {
 	for _, route := range r.routes {
-		if route.scheme() == scheme_httpbridge {
+		if route.scheme() == schemeHTTPBridge {
 			parsedURL, err := url.Parse(route.target.baseUrl)
 			if err != nil {
 				return fmt.Errorf(`Invalid replacement URL "%v": %v`, route.target.baseUrl, err)
@@ -325,14 +321,14 @@ func newUrlTranslator(config *Config) (urlTranslator, error) {
 				return nil, fmt.Errorf("In route for '%v': %v", match, err)
 			}
 		}
-		named_target, named_suffix := split_named_target(configRoute.Target)
-		if len(named_target) != 0 {
+		namedTarget, namedSuffix := splitNamedTarget(configRoute.Target)
+		if len(namedTarget) != 0 {
 			// Named target, which comes from the "Targets" section of the config file
-			if targets[named_target] == nil {
-				return nil, fmt.Errorf("Route target (%v) not defined", named_target)
+			if targets[namedTarget] == nil {
+				return nil, fmt.Errorf("Route target (%v) not defined", namedTarget)
 			}
-			route.target = targets[named_target]
-			route.replace = named_suffix
+			route.target = targets[namedTarget]
+			route.replace = namedSuffix
 		} else {
 			// An inline target, which is just a string, or (sometimes) a ConfigRoute object
 			parsedUrl, errUrl := url.Parse(configRoute.Target)

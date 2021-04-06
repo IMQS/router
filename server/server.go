@@ -324,16 +324,16 @@ func (s *Server) ServeHTTP(isSecure bool, w http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	switch parse_scheme(newurl) {
-	case scheme_http:
+	switch parseScheme(newurl) {
+	case schemeHTTP:
 		fallthrough
-	case scheme_https:
+	case schemeHTTPS:
 		s.forwardHttp(w, req, newurl)
-	case scheme_httpbridge:
+	case schemeHTTPBridge:
 		s.forwardHttpBridge(isSecure, w, req, newurl)
-	case scheme_ws:
+	case schemeWS:
 		s.forwardWebsocket(w, req, newurl)
-	case scheme_udp:
+	case schemeUDP:
 		s.forwardUDP(w, req, newurl)
 	default:
 		s.errorLog.Errorf("Unrecognized scheme (%v) -> (%v)", req.RequestURI, newurl)
@@ -427,7 +427,7 @@ func (s *Server) forwardHttp(w http.ResponseWriter, req *http.Request, newurl st
 	}
 
 	// Copy headers from response into w, replacing Location header value back to original if found.
-	copyheadersOut(dstHost, resp.Header, srcHost, w.Header(), req.TLS != nil)
+	copyHeaders(resp.Header, w.Header())
 	w.WriteHeader(resp.StatusCode)
 
 	if resp.Body != nil {
@@ -545,14 +545,14 @@ func (s *Server) forwardHttpBridge(isSecure bool, w http.ResponseWriter, req *ht
 	port, _ := strconv.Atoi(parsed.Host)
 
 	// In order to build the correct cleaned_uri, we need to escape the parsed.Path string without the "/".
-	splitted_cleaned_uri := strings.Split(parsed.Path, "/")
-	for i := 0; i < len(splitted_cleaned_uri); i++ {
-		splitted_cleaned_uri[i] = url.PathEscape(splitted_cleaned_uri[i])
+	splitAndCleanURI := strings.Split(parsed.Path, "/")
+	for i := 0; i < len(splitAndCleanURI); i++ {
+		splitAndCleanURI[i] = url.PathEscape(splitAndCleanURI[i])
 	}
-	cleaned_uri := strings.Join(splitted_cleaned_uri, "/")
+	cleanedURI := strings.Join(splitAndCleanURI, "/")
 
 	if len(parsed.RawQuery) != 0 {
-		cleaned_uri += "?" + parsed.RawQuery
+		cleanedURI += "?" + parsed.RawQuery
 	}
 
 	// fmt.Printf("org path = %v, cleaned_uri = %v, port = %v\n", req.RequestURI, cleaned_uri, port)
@@ -560,7 +560,7 @@ func (s *Server) forwardHttpBridge(isSecure bool, w http.ResponseWriter, req *ht
 	s.addXOriginalPath(req, req)
 
 	// httpbridge doesn't care about req.URL - it only looks at RequestURI
-	req.RequestURI = cleaned_uri
+	req.RequestURI = cleanedURI
 
 	s.httpBridgeServers[port].ServeHTTP(w, req)
 }
@@ -623,7 +623,7 @@ func (s *Server) runHttpBridgeServers() error {
 	nwaiting := 0
 
 	for _, v := range s.translator.allRoutes() {
-		if v.scheme() != scheme_httpbridge {
+		if v.scheme() != schemeHTTPBridge {
 			continue
 		}
 		parsed, err := url.Parse(v.target.baseUrl)
@@ -694,46 +694,10 @@ func copyCookieToMSHTTP(org *http.Cookie) *http.Cookie {
 func copyheadersIn(srcHost string, src http.Header, dstHost string, dst http.Header) {
 	for k, vv := range src {
 		for _, v := range vv {
-			// [2020-07-02 BMH]
-			// I'm commenting this out, along with the same logic in copyheadersOut, because
-			// this really just seems wrong.
-			/*
-				if k == "Location" {
-					// Example
-					// Original  Location		http://example.com/files/abc
-					// Rewritten Location		http://127.0.0.1:2005/abc
-					// -- I'm not sure why we do this -- If in doubt, just delete this. It seems wrong.
-					v = strings.Replace(v, srcHost, dstHost, 1)
-				}
-			*/
 			if k == "Connection" && v == "close" {
 				// See detailed explanation in top-level function comment
 				continue
 			}
-			dst.Add(k, v)
-		}
-	}
-}
-
-func copyheadersOut(srcHost string, src http.Header, dstHost string, dst http.Header, isHTTPS bool) {
-	for k, vv := range src {
-		for _, v := range vv {
-			// [2020-07-02 BMH]
-			// I'm commenting this out, because it's causing problems with my OAuth code for DTPW, and
-			// we're not longer using DTPW. This code was retarded anyway. It should have parsed the URL,
-			// and then replaced only the hostname. This bulk string replacement caused it to screw up
-			// the Path of the URL, and took me a while to figure out how this happened!
-			/*
-				if k == "Location" {
-					// Some servers will send a Location header, but that Location will be an internal network address, so we
-					// need to rewrite it to be an external address. It may be wiser to just strip the absolute portion of Location away,
-					// just leaving a relative URL. This is all for Yellowfin's sake.
-					v = strings.Replace(v, srcHost, dstHost, 1)
-					if isHTTPS && strings.Index(v, "http:") == 0 {
-						v = strings.Replace(v, "http:", "https:", 1)
-					}
-				}
-			*/
 			dst.Add(k, v)
 		}
 	}
