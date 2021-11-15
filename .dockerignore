@@ -1,2 +1,7 @@
 Dockerfile
 README.md
+router
+.gitignore
+env.bat
+.github
+imqs-build.rb

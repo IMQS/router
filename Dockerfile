@@ -1,9 +1,9 @@
-# docker build -t imqs/router:master --build-arg SSH_KEY="`cat ~/.ssh/id_rsa`" .
+# docker build -t imqs/router:latest --build-arg SSH_KEY="`cat ~/.ssh/id_rsa`" .
 
 ##################################
 # builder image
 ##################################
-FROM golang:1.13 as builder
+FROM golang:1.15 as builder
 
 ARG SSH_KEY
 
@@ -32,8 +32,12 @@ RUN go build -o router main.go
 ####################################
 # deployed image
 ####################################
-FROM imqs/ubuntu-base
+FROM imqs/ubuntu-base:20.04
 COPY --from=builder /build/router /opt/router
+
 EXPOSE 80
 EXPOSE 443
+
+HEALTHCHECK CMD curl --fail http://localhost/router/ping || exit
+
 ENTRYPOINT ["wait-for-nc.sh", "config:80", "--", "/opt/router"]
