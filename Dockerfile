@@ -38,6 +38,6 @@ COPY --from=builder /build/router /opt/router
 EXPOSE 80
 EXPOSE 443
 
-HEALTHCHECK CMD curl --fail http://localhost/router/ping || exit
+HEALTHCHECK CMD curl --fail http://localhost/router/ping || exit 1
 
 ENTRYPOINT ["wait-for-nc.sh", "config:80", "--", "/opt/router"]
