@@ -2,6 +2,7 @@ package server
 
 import (
 	"compress/gzip"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -152,6 +153,7 @@ func (s *Server) ListenAndServe() error {
 						break
 					}
 				}
+				hs.TLSConfig.MinVersion = tls.VersionTLS12
 				err = hs.ListenAndServeTLS(s.configHttp.CertFile, s.configHttp.CertKeyFile)
 			} else {
 				err = hs.ListenAndServe()
