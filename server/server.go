@@ -153,7 +153,10 @@ func (s *Server) ListenAndServe() error {
 						break
 					}
 				}
-				hs.TLSConfig.MinVersion = tls.VersionTLS12
+				hs.TLSConfig = &tls.Config{
+					MinVersion:               tls.VersionTLS12,
+					PreferServerCipherSuites: true,
+				}
 				err = hs.ListenAndServeTLS(s.configHttp.CertFile, s.configHttp.CertKeyFile)
 			} else {
 				err = hs.ListenAndServe()
