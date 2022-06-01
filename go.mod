@@ -5,7 +5,7 @@ go 1.15
 require (
 	github.com/BurntSushi/toml v0.3.1 // indirect
 	github.com/IMQS/go-apachelog v0.0.0-20180717125434-05952ec2100f
-	github.com/IMQS/gowinsvc v0.0.0-20171019081213-88eed8ddfe95
+	github.com/IMQS/gowinsvc v0.0.0-20220601052852-62ce07b0ae0b
 	github.com/IMQS/httpbridge v0.0.0-20181012064022-ee7fa39680db
 	github.com/IMQS/log v1.0.1
 	github.com/IMQS/serviceauth v1.0.1
