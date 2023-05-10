@@ -1,41 +1,41 @@
 name: Build Router Service
 on:
-   # Trigger the workflow on push or pull request,
-   push:
-      branches:
-         - master
-         - dtpw-*
-         - rc
-         - uat
-         - stable
-      tags:
-         - "[vV][0-9]+.[0-9]+.[0-9]+"
-   pull_request:
-      branches:
-         - master
-         - dtpw-*
-   workflow_dispatch:
-   # Also trigger on page_build, as well as release created events
-   page_build:
-   release:
-      types: # This configuration does not affect the page_build event above
-         - created
+  # Trigger the workflow on push or pull request,
+  push:
+    branches:
+      - master
+      - dtpw-*
+      - rc
+      - uat
+      - stable
+    tags:
+      - "[vV][0-9]+.[0-9]+.[0-9]+"
+  pull_request:
+    branches:
+      - master
+      - dtpw-*
+  workflow_dispatch:
+  # Also trigger on page_build, as well as release created events
+  page_build:
+  release:
+    types: # This configuration does not affect the page_build event above
+      - created
 concurrency: ${{ github.ref }}
 
 jobs:
-   build:
-      name: Build Router
-      runs-on: ubuntu-20.04
-      steps:
-         - name: Checkout code
-           uses: actions/checkout@v2
-           id: checkout
-         - name: build-push
-           uses: docker/build-push-action@v1
-           with:
-              username: ${{ secrets.DEPLOY_DOCKER_USERNAME }}
-              password: ${{ secrets.DEPLOY_DOCKER_PASSWORD }}
-              repository: imqs/router
-              tag_with_ref: true
-              build_args: SSH_KEY=${{ secrets.DEPLOYBOT_SSH_KEY }}
-              cache_froms: golang:1.15, imqs/ubuntu-base:20.04
+  build:
+    name: Build Router
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        id: checkout
+      - name: build-push
+        uses: docker/build-push-action@v1
+        with:
+          username: ${{ secrets.DEPLOY_DOCKER_USERNAME }}
+          password: ${{ secrets.DEPLOY_DOCKER_PASSWORD }}
+          repository: imqs/router
+          tag_with_ref: true
+          build_args: SSH_KEY=${{ secrets.DEPLOYBOT_SSH_KEY }}
+          cache_froms: golang:1.15, imqs/ubuntu-base:20.04
