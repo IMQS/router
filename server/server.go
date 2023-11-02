@@ -254,11 +254,10 @@ func (s *Server) isLegalRequest(req *http.Request) bool {
 	return true
 }
 
-/*
-ServeHTTP is the single router access point to the frontdoor server. All request are handled in this method.
- It uses Routes to generate the new url and then switches on scheme type to connect to the backend copying
-between these pipes.
-*/
+// ServeHTTP is the single router access point to the frontdoor server. All
+// request are handled in this method. It uses Routes to generate the new url
+// and then switches on scheme type to connect to the backend copying between
+// these pipes.
 func (s *Server) ServeHTTP(isSecure bool, w http.ResponseWriter, req *http.Request) {
 	// HACK! Doesn't belong here!
 	// Catch wsdl here to statically serve.
@@ -381,7 +380,7 @@ func (s *Server) forwardHttp(w http.ResponseWriter, req *http.Request, newurl st
 	cleaned.ContentLength = req.ContentLength
 
 	if remoteAddrNoPort, _, err := net.SplitHostPort(req.RemoteAddr); err == nil {
-		cleaned.Header["X-Forwarded-For"] = []string{remoteAddrNoPort}
+		cleaned.Header.Add("X-Forwarded-For", remoteAddrNoPort)
 	}
 
 	s.addXOriginalPath(req, cleaned)
