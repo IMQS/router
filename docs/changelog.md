@@ -1,5 +1,10 @@
 # Changelog
 
+## v3.2.1
+
+* fix: Overriding X-Forwarded-For request header (#13)
+* build: Adds lfs to docs action
+
 ## v3.2.0
 
 * build: Add semantic versioning filter to build
