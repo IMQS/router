@@ -1,0 +1,21 @@
+{
+  "AccessLog":		"router-access-test.log",
+  "ErrorLog":			"router-error-test.log",
+  "HTTP": {
+    "Port": 5002
+  },
+  "Targets": {
+    "PORT5000": {
+      "URL": "http://127.0.0.1:5000"
+    }
+  },
+  "Routes": {
+    "/test(.*)":				"{PORT5000}/test$1",
+    "/test1/(.*)":				"{PORT5000}/test1/$1",
+    "/test2/(.*)":				"{PORT5000}/redirect2/$1",
+    "/test3/(.*)":				"{PORT5000}/$1",
+    "/nominatim/(.*)":			"https://nominatim.openstreetmap.org/$1",
+    "/geonames/(.*)":			"http://api.geonames.org/geonames/$1",
+    "/wws/(.*)":				"ws://127.0.0.1:5100/wws/$1"
+  }
+}

@@ -38,6 +38,7 @@ type Server struct {
 	wsdlMatch         *regexp.Regexp             // hack for serving static content
 	httpBridgeServers map[int]*httpbridge.Server // Keys of the map are httpbridge backend port numbers
 	udpConnPool       *UDPConnectionPool
+	authChannel       chan string
 }
 
 type frontServer struct {
@@ -50,7 +51,7 @@ func (f *frontServer) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 // NewServer creates a new server instance; starting up logging and creating a routing instance.
-func NewServer(config *Config) (*Server, error) {
+func NewServer(config *Config, authChannel chan string) (*Server, error) {
 	var err error
 	s := &Server{}
 	s.configHttp = config.HTTP
@@ -99,6 +100,7 @@ func NewServer(config *Config) (*Server, error) {
 	s.errorLog.Infof(" MaxIdleConnsPerHost: %v", config.HTTP.MaxIdleConnections)
 	s.errorLog.Infof(" ResponseHeaderTimeout: %v", config.HTTP.ResponseHeaderTimeout)
 	s.wsdlMatch = regexp.MustCompile(`([^/]\w+)\.(wsdl)$`)
+	s.authChannel = authChannel
 	return s, nil
 }
 
@@ -272,7 +274,7 @@ func (s *Server) ServeHTTP(isSecure bool, w http.ResponseWriter, req *http.Reque
 		http.Error(w, "", http.StatusTeapot)
 		return
 	}
-
+	s.authChannel <- fmt.Sprintf("%v", req.URL)
 	// Redirect HTTP requests to HTTPS
 	// Requests from IP addressses and localhost are left untouched
 	if s.configHttp.RedirectHTTP && !isSecure && net.ParseIP(req.Host) == nil && req.Host != "localhost" {

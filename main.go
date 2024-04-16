@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/IMQS/gowinsvc/service"
 	"github.com/IMQS/router/server"
@@ -58,7 +60,60 @@ func realMain() (result int) {
 		return
 	}
 
-	server, err := server.NewServer(config)
+	var authChannel chan string
+	authChannel = make(chan string, 1000)
+
+	// authConsumer
+	server, err := server.NewServer(config, authChannel)
+	go func() {
+		cnt := 0
+		var s string
+		var ok bool
+		var buff []string
+		waitTime := time.Now()
+		dumpAndExit := false
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Printf("Recovered in f: %v\n", r)
+				fmt.Printf("ERROR in authConsumer, existing goroutine\n")
+				//s := GetStack()
+				//errGlobal = fmt.Errorf(fmt.Sprintf("%v\n%v\n", r, s))
+			}
+		}()
+		for {
+			//s, ok = <-authChannel
+			select {
+			case s, ok = <-authChannel:
+				if !ok {
+					dumpAndExit = true
+				} else {
+					buff = append(buff, s)
+					cnt++
+					//fmt.Printf("cnt: %v\n", cnt)
+				}
+				newTime := time.Now()
+				// this scheme has the effect of flushing the buffer every 100 messages or every 10ms
+				// if absolutely nothing is received for a long time via the channel (but the service does not terminate)
+				// then the buffer may never be flushed...
+				// to get around this we may introduce another channel with a ticker
+				// ever second
+
+				diff := newTime.Sub(waitTime)
+				if (cnt > 100) || diff > (100*time.Millisecond) || dumpAndExit {
+					cnt = 0
+					waitTime = time.Now()
+					fmt.Printf("Dump: cnt %v, diff: %s\n", cnt, diff)
+					fmt.Printf("%v\n", strings.Join(buff, "\n"))
+					buff = nil
+				}
+				if dumpAndExit {
+					fmt.Printf("Exiting authConsumer\n")
+					return
+				}
+			}
+		}
+	}()
+
 	if err != nil {
 		panic(fmt.Errorf("Error starting server: %v", err))
 	}
