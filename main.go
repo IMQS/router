@@ -96,7 +96,7 @@ func realMain() (result int) {
 				// if absolutely nothing is received for a long time via the channel (but the service does not terminate)
 				// then the buffer may never be flushed...
 				// to get around this we may introduce another channel with a ticker
-				// ever second
+				// every second
 
 				diff := newTime.Sub(waitTime)
 				if (cnt > 100) || diff > (100*time.Millisecond) || dumpAndExit {

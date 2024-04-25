@@ -86,7 +86,7 @@ func (s *sandbox) start() error {
 	if err != nil {
 		return err
 	}
-	if s.front, err = NewServer(config); err != nil {
+	if s.front, err = NewServer(config, nil); err != nil {
 		return err
 	}
 
