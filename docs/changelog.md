@@ -1,5 +1,9 @@
 # Changelog
 
+## v3.2.2
+
+* chore: Adds error checking on body copy (ASG-3421)
+
 ## v3.2.1
 
 * fix: Overriding X-Forwarded-For request header (#13)
