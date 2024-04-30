@@ -436,7 +436,15 @@ func (s *Server) forwardHttp(w http.ResponseWriter, req *http.Request, newurl st
 
 	if resp.Body != nil {
 		defer resp.Body.Close()
-		io.Copy(responseWriter, resp.Body)
+		written, err := io.Copy(responseWriter, resp.Body)
+		if err != nil {
+			s.errorLog.Info("Failed to copy response body: " + err.Error())
+			return
+		}
+		if resp.ContentLength > 0 && written != resp.ContentLength {
+			s.errorLog.Infof("Incorrect amount of data copied from response body: Content-Length %v, Copied %v", resp.ContentLength, written)
+			return
+		}
 	}
 }
 
