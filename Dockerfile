@@ -3,7 +3,7 @@
 ##################################
 # builder image
 ##################################
-FROM golang:1.15 as builder
+FROM golang:1.22 AS builder
 
 ARG SSH_KEY
 
@@ -32,7 +32,7 @@ RUN go build -o router main.go
 ####################################
 # deployed image
 ####################################
-FROM imqs/ubuntu-base:20.04
+FROM imqs/ubuntu-base:24.04
 COPY --from=builder /build/router /opt/router
 
 EXPOSE 80

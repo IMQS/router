@@ -33,13 +33,11 @@ need to, because the Go test framework launches a separate process for each test
 */
 
 import (
-	"flag"
 	"fmt"
 	"html"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -76,23 +74,26 @@ type sandbox struct {
 	back  *backend
 }
 
-func (s *sandbox) start() error {
+func httpStart(t *testing.T) func(t *testing.T) {
+	s := &sandbox{}
 	s.back = newBackend()
-	s.back.httpServer.Addr = ":5000"
-	go s.back.httpServer.ListenAndServe()
+	s.back.Addr = ":5000"
+	go s.back.ListenAndServe()
 
 	config := &Config{}
 	err := config.LoadString(mainConfig)
 	if err != nil {
-		return err
+		t.Fatal("Could not load config")
 	}
 	if s.front, err = NewServer(config); err != nil {
-		return err
+		t.Fatal("Could not start server")
 	}
 
 	go s.front.ListenAndServe()
-
-	return nil
+	time.Sleep(500 * time.Millisecond)
+	return func(t *testing.T) {
+		s.back.Close()
+	}
 }
 
 func doHttp(t *testing.T, method, url, body, expect_body string) {
@@ -112,7 +113,7 @@ func doHttpFunc(t *testing.T, method, url, body string, verifyBodyFunc func(*tes
 	if err != nil {
 		t.Fatalf("Request '%v' failed with: %v", url, err)
 	}
-	body_response, err := ioutil.ReadAll(resp.Body)
+	body_response, err := io.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,6 +122,8 @@ func doHttpFunc(t *testing.T, method, url, body string, verifyBodyFunc func(*tes
 }
 
 func TestVariousURL(t *testing.T) {
+	close := httpStart(t)
+	defer close(t)
 	doHttp(t, "GET", "http://127.0.0.1:5002/gert/jan/piet", "", "Route not found\n")                                                       // Invalid route
 	doHttp(t, "GET", "http://127.0.0.1:5002/test1", "", "Method GET URL /test1 BODY ")                                                     // hello world
 	doHttp(t, "GET", "http://127.0.0.1:5002/test2/path1/path2", "", "Method GET URL /redirect2/path1/path2 BODY ")                         // replace base url
@@ -129,7 +132,7 @@ func TestVariousURL(t *testing.T) {
 	doHttp(t, "GET", "http://127.0.0.1:5002/test1/and/a/further/very/long/url/this/can/go/up/to/11kilobits/", "", "Method GET URL /test1/and/a/further/very/long/url/this/can/go/up/to/11kilobits/ BODY ")
 
 	// other host
-	doHttpFunc(t, "GET", "http://127.0.0.1:5002/nominatim/search/TechnoPark,+Stellenbosch?format=json", "", func(t *testing.T, resp_body string) {
+	doHttpFunc(t, "GET", "http://127.0.0.1:5002/nominatim/search.php?q=TechnoPark,+Stellenbosch&format=json", "", func(t *testing.T, resp_body string) {
 		if strings.Index(resp_body, "Cape Winelands") == -1 {
 			t.Errorf("nominatim search failed. Response body: %v", resp_body)
 		}
@@ -137,6 +140,8 @@ func TestVariousURL(t *testing.T) {
 }
 
 func TestMethods(t *testing.T) {
+	close := httpStart(t)
+	defer close(t)
 	methods := [4]string{"GET", "DELETE", "POST", "PUT"}
 	expected := [4]string{
 		"Method GET URL /test1/testbody BODY SomeBodyText",
@@ -215,10 +220,67 @@ func TestSingleClientManyRequests(t *testing.T) {
 	//Shutdown()
 }
 */
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Very simple backend server to use for testing.
+type backend struct {
+	*http.Server
+}
+
+func newBackend() *backend {
+	b := &backend{}
+	b.Server = &http.Server{}
+	b.Server.Handler = b
+	return b
+}
+
+func (b *backend) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	body, _ := io.ReadAll(req.Body)
+	req.Body.Close()
+
+	fmt.Fprintf(w, "Method %s URL %s BODY %s", req.Method, html.EscapeString(req.URL.Path), body)
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+func wsEchoHandler(ws *websocket.Conn) {
+	for {
+		var msg string
+		if err := websocket.Message.Receive(ws, &msg); err != nil {
+			log.Printf("EchoServer Receive : %v\n", err)
+			break
+		}
+		msg = "Backend Websocket Received : " + msg
+		if err := websocket.Message.Send(ws, msg); err != nil {
+			log.Printf("EchoServer Send : %v\n", err)
+			break
+		}
+	}
+}
+
+// simple websocket backend
+func wsServer(t *testing.T) func(t *testing.T) {
+	m := http.NewServeMux()
+	m.Handle("/wws/", websocket.Handler(wsEchoHandler))
+	s := http.Server{
+		Addr:    ":5100",
+		Handler: m,
+	}
+	go s.ListenAndServe()
+
+	return func(t *testing.T) {
+		s.Close()
+	}
+}
+
 func TestWebsocket(t *testing.T) {
 	expected := "Backend Websocket Received : testing webserver"
-	go wsServer(t)
-	time.Sleep(0.5 * 1e9) // Time for server to start
+	cleanup := wsServer(t)
 	origin := "http://localhost/"
 	url := "ws://127.0.0.1:5002/wws/x"
 	ws, err := websocket.Dial(url, "", origin)
@@ -249,68 +311,6 @@ func TestWebsocket(t *testing.T) {
 	if msg != expected {
 		t.Errorf("Expected \"%s\" received \"%s\"", expected, msg)
 	}
+	cleanup(t)
 	ws.Close()
-}
-
-func TestMain(m *testing.M) {
-	flag.Parse()
-	singleSandbox := &sandbox{}
-	if err := singleSandbox.start(); err != nil {
-		panic(err)
-	}
-	os.Exit(m.Run())
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// Very simple backend server to use for testing.
-type backend struct {
-	httpServer *http.Server
-}
-
-func newBackend() *backend {
-	b := &backend{}
-	b.httpServer = &http.Server{}
-	b.httpServer.Handler = b
-	return b
-}
-
-func (b *backend) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	body, _ := ioutil.ReadAll(req.Body)
-	req.Body.Close()
-
-	fmt.Fprintf(w, "Method %s URL %s BODY %s", req.Method, html.EscapeString(req.URL.Path), body)
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-func wsEchoHandler(ws *websocket.Conn) {
-	log.Println("In Echo")
-	for {
-		var msg string
-		if err := websocket.Message.Receive(ws, &msg); err != nil {
-			log.Printf("EchoServer Receive : %v\n", err)
-			break
-		}
-		msg = "Backend Websocket Received : " + msg
-		if err := websocket.Message.Send(ws, msg); err != nil {
-			log.Printf("EchoServer Send : %v\n", err)
-			break
-		}
-	}
-	log.Println("Out of echo")
-}
-
-// simple websocket backend
-func wsServer(t *testing.T) {
-	http.Handle("/wws/", websocket.Handler(wsEchoHandler))
-	err := http.ListenAndServe(":5100", nil)
-	if err != nil {
-		t.Errorf("ListenAndServer : %s", err.Error())
-	}
-	log.Println("Out of server")
 }

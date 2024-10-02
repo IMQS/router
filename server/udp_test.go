@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"net"
 	"strconv"
 	"sync"
 	"testing"
@@ -12,14 +13,16 @@ var wg sync.WaitGroup
 
 /*
  * These tests do not actually launch a live router; they simply test the UDP connection pool.
- * Since UDP requests are connectionless there is no need for a server component
+ * Since UDP requests are connectionless there is no need for a server component.
+ *
+ * Adding a listening UDP port as otherwise the test is obliterated by white noise regarding
+ * connection refused erors
  */
 func send(t *testing.T, port, iMsg int) {
 	defer wg.Done()
 	msg := []byte(strconv.Itoa(iMsg))
 	address := fmt.Sprintf(":%v", port)
 	if err := udpConnPool.Send(address, msg); err != nil {
-		t.Fatal(err)
 	}
 }
 
@@ -32,6 +35,11 @@ func sendToPort(t *testing.T, port, nrMsgs int) {
 }
 
 func TestEphemeralPortExhaustion(t *testing.T) {
+	conn, err := net.ListenUDP("udp", &net.UDPAddr{Port: 8000})
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
 	udpConnPool = NewUDPConnectionPool()
 
 	wg.Add(1)

@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
-	"io/ioutil"
 	golog "log"
 	"net"
 	"net/http"
@@ -19,25 +18,24 @@ import (
 
 	// "github.com/cespare/hutil/apachelog" // Newer, but doesn't support websockets
 	apachelog "github.com/IMQS/go-apachelog" // Older, but supports websockets. Forked to include time zone in access logs.
-	"github.com/IMQS/httpbridge/go/src/httpbridge"
 	"github.com/IMQS/log"
 	"github.com/IMQS/serviceauth"
 	serviceconfig "github.com/IMQS/serviceconfigsgo"
+
 	"golang.org/x/net/websocket"
 	lumberjack "gopkg.in/natefinch/lumberjack.v2"
 )
 
 // Router Server
 type Server struct {
-	httpTransport     *http.Transport // For talking to backend services
-	configHttp        ConfigHTTP
-	accessLogFile     string
-	debugRoutes       bool // If enabled, dumps every translated route to the error log
-	translator        urlTranslator
-	errorLog          *log.Logger
-	wsdlMatch         *regexp.Regexp             // hack for serving static content
-	httpBridgeServers map[int]*httpbridge.Server // Keys of the map are httpbridge backend port numbers
-	udpConnPool       *UDPConnectionPool
+	httpTransport *http.Transport // For talking to backend services
+	configHttp    ConfigHTTP
+	accessLogFile string
+	debugRoutes   bool // If enabled, dumps every translated route to the error log
+	translator    urlTranslator
+	errorLog      *log.Logger
+	wsdlMatch     *regexp.Regexp // hack for serving static content
+	udpConnPool   *UDPConnectionPool
 }
 
 type frontServer struct {
@@ -54,12 +52,11 @@ func NewServer(config *Config) (*Server, error) {
 	var err error
 	s := &Server{}
 	s.configHttp = config.HTTP
-	s.httpBridgeServers = map[int]*httpbridge.Server{}
 	s.udpConnPool = NewUDPConnectionPool()
 
 	s.debugRoutes = config.DebugRoutes
 	s.accessLogFile = config.AccessLog
-	s.errorLog = log.New(pickLogfile(config.ErrorLog))
+	s.errorLog = log.New(pickLogfile(config.ErrorLog), false)
 	if config.LogLevel != "" {
 		if lev, err := log.ParseLevel(config.LogLevel); err != nil {
 			s.errorLog.Errorf("%v", err)
@@ -175,9 +172,6 @@ func (s *Server) ListenAndServe() error {
 	if secureAddr != "" {
 		go runHttp(secureAddr, true, errors)
 	}
-	go func() {
-		errors <- s.runHttpBridgeServers()
-	}()
 
 	// Wait for the first non-nil error and return it
 	for err := range errors {
@@ -205,20 +199,20 @@ func fetchCerts(certPath, certKeyPath string) error {
 	}
 
 	//fetch the file contents and store them in the paths supplied
-	bytes, err := serviceconfig.GetConfigJson("", serviceName, serviceConfigVersion, filepath.Base(certPath))
+	bytes, err := serviceconfig.GetConfigJson("", serviceName, serviceConfigVersion, filepath.Base(certPath), false)
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(certPath, bytes, os.ModePerm)
+	err = os.WriteFile(certPath, bytes, os.ModePerm)
 	if err != nil {
 		return err
 	}
 
-	bytes, err = serviceconfig.GetConfigJson("", serviceName, serviceConfigVersion, filepath.Base(certKeyPath))
+	bytes, err = serviceconfig.GetConfigJson("", serviceName, serviceConfigVersion, filepath.Base(certKeyPath), false)
 	if err != nil {
 		return err
 	}
-	err = ioutil.WriteFile(certKeyPath, bytes, os.ModePerm)
+	err = os.WriteFile(certKeyPath, bytes, os.ModePerm)
 	if err != nil {
 		return err
 	}
@@ -333,8 +327,6 @@ func (s *Server) ServeHTTP(isSecure bool, w http.ResponseWriter, req *http.Reque
 		fallthrough
 	case schemeHTTPS:
 		s.forwardHttp(w, req, newurl)
-	case schemeHTTPBridge:
-		s.forwardHttpBridge(isSecure, w, req, newurl)
 	case schemeWS:
 		s.forwardWebsocket(w, req, newurl)
 	case schemeUDP:
@@ -501,9 +493,7 @@ func (s *Server) forwardWebsocket(w http.ResponseWriter, req *http.Request, newu
 	wsServer.ServeHTTP(w, req)
 }
 
-/*
-forwardUDP does for UDP what forwardHTTP does for http requests. UDP is connectionless, so implementation is very simple
-*/
+// forwardUDP does for UDP what forwardHTTP does for http requests. UDP is connectionless, so implementation is very simple
 func (s *Server) forwardUDP(w http.ResponseWriter, req *http.Request, newurl string) {
 	u, err := url.Parse(newurl)
 	if err != nil {
@@ -511,7 +501,7 @@ func (s *Server) forwardUDP(w http.ResponseWriter, req *http.Request, newurl str
 		return
 	}
 	dstHost := u.Host // Destination address, e.g. 127.0.0.1:5984.
-	msg, err := ioutil.ReadAll(req.Body)
+	msg, err := io.ReadAll(req.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -522,59 +512,6 @@ func (s *Server) forwardUDP(w http.ResponseWriter, req *http.Request, newurl str
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-}
-
-func (s *Server) forwardHttpBridge(isSecure bool, w http.ResponseWriter, req *http.Request, newurl string) {
-	// An example mapping from original URL to newurl is
-	// http://localhost/map2/hello/foo -> httpbridge://2019/hello/foo
-	// The 'httpbridge' portion of newurl is not interesting to us. It is merely syntax
-	// of the routing table, to make it crystal clear that the backend is not another
-	// HTTP hop, but an httpbridge server.
-	// In order to be useful, we need to replace the 'httpbridge' portion of newurl
-	// with something that looks like an http URL.
-	//
-	// In summary, the URL undergoes the following three stages
-	//
-	//   https://example.imqs.co.za/map2/hello/foo   (original)
-	//   httpbridge://2019/hello/foo                 (transformed by routing table, notice that map2 prefix was removed)
-	//   https://example.imqs.co.za/hello/foo        (rewritten to be http-like. Basically, just routing table prefix is removed)
-	//
-	// Note that we only send httpbridge the part after the hostname, so in the above example,
-	// httpbridge only receives "/hello/foo". If we want to transmit the other information,
-	// then we'll add that information to headers, or to the flatbuffer.
-
-	// If you need to build a "X-Forward-For" header, then you can form it by doing: cleaned_prefix + req.RequestURI
-	//  	cleaned_prefix := ""
-	//  	if isSecure {
-	//  		cleaned_prefix = "https://"
-	//  	} else {
-	//  		cleaned_prefix = "http://"
-	//  	}
-	//  	cleaned_prefix += req.Host
-
-	// fmt.Printf("newurl: %v\n", newurl)
-	parsed, _ := url.Parse(newurl)
-	port, _ := strconv.Atoi(parsed.Host)
-
-	// In order to build the correct cleaned_uri, we need to escape the parsed.Path string without the "/".
-	splitAndCleanURI := strings.Split(parsed.Path, "/")
-	for i := 0; i < len(splitAndCleanURI); i++ {
-		splitAndCleanURI[i] = url.PathEscape(splitAndCleanURI[i])
-	}
-	cleanedURI := strings.Join(splitAndCleanURI, "/")
-
-	if len(parsed.RawQuery) != 0 {
-		cleanedURI += "?" + parsed.RawQuery
-	}
-
-	// fmt.Printf("org path = %v, cleaned_uri = %v, port = %v\n", req.RequestURI, cleaned_uri, port)
-
-	s.addXOriginalPath(req, req)
-
-	// httpbridge doesn't care about req.URL - it only looks at RequestURI
-	req.RequestURI = cleanedURI
-
-	s.httpBridgeServers[port].ServeHTTP(w, req)
 }
 
 // addXOriginalPath adds a new HTTP header called X-Original-Path.
@@ -626,71 +563,12 @@ func (s *Server) authorize(w http.ResponseWriter, req *http.Request, requirePerm
 	}
 }
 
-// Start HttpBridge listeners on all the ports that are configured.
-// It doesn't make sense to delay this process until the first incoming request for a particular
-// backend, since HttpBridge backends will constantly be trying to connect to us, and
-// probably emitting warnings to their logs if they are unable to connect.
-func (s *Server) runHttpBridgeServers() error {
-	errPipe := make(chan error)
-	nwaiting := 0
-
-	for _, v := range s.translator.allRoutes() {
-		if v.scheme() != schemeHTTPBridge {
-			continue
-		}
-		parsed, err := url.Parse(v.target.baseUrl)
-		if err != nil {
-			return fmt.Errorf(`Invalid URL "%v": %v`, v.target.baseUrl, err)
-		}
-		port, _ := strconv.Atoi(parsed.Host)
-		if port < 1 || port > 65535 {
-			return fmt.Errorf(`Invalid port specification in httpbridge URL "%v"`, v.target.baseUrl)
-		}
-		if s.httpBridgeServers[port] != nil {
-			continue
-		}
-		hs := &httpbridge.Server{
-			DisableHttpListener: true,
-			BackendPort:         fmt.Sprintf(":%v", port),
-		}
-		hs.Log.Target = s.errorLog
-		hs.Log.Level = makeHttpBridgeLogLevel(s.errorLog.Level)
-		s.httpBridgeServers[port] = hs
-		nwaiting++
-		go func() {
-			errPipe <- hs.ListenAndServe()
-		}()
-	}
-
-	for nwaiting != 0 {
-		err := <-errPipe
-		if err != nil {
-			return err
-		}
-		nwaiting--
-	}
-	return nil
-}
-
 func (s *Server) Pong(w http.ResponseWriter, req *http.Request) {
 	timestamp := time.Now().Unix()
 	fmt.Fprintf(w, `{"Timestamp":%v}`, timestamp)
 }
 
-func makeHttpBridgeLogLevel(l log.Level) httpbridge.LogLevel {
-	switch l {
-	case log.Trace:
-		return httpbridge.LogLevelDebug
-	case log.Debug:
-		return httpbridge.LogLevelDebug
-	case log.Info:
-		return httpbridge.LogLevelInfo
-	case log.Warn:
-		return httpbridge.LogLevelWarn
-	case log.Error:
-		return httpbridge.LogLevelError
-	}
-	return httpbridge.LogLevelDebug
+func (s *Server) close() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
