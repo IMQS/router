@@ -33,7 +33,6 @@ func (p *UDPConnectionPool) getConnection(address string) (*udpConnection, error
 			return nil, fmt.Errorf("UDP connection pool limit reached")
 		}
 
-		fmt.Println("Adding UDP connection to UDP connection pool : ", address)
 		conn, err := net.Dial("udp", address)
 		if err != nil {
 			return nil, err

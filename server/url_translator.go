@@ -37,16 +37,20 @@ type target struct {
 Usage of targetPassThroughAuth fields:
 
 PureHub:
+
 	token
 	tokenExpires
 
 SitePro:
+
 	none
 
 ECS:
+
 	none
 
 CouchDB:
+
 	none
 */
 type targetPassThroughAuth struct {
@@ -238,6 +242,7 @@ func (r *routeSet) match(uri *url.URL) *route {
 func (r *routeSet) verifyHttpBridgeURLs() error {
 	for _, route := range r.routes {
 		if route.scheme() == schemeHTTPBridge {
+			fmt.Printf("HTTPP Bridge\n")
 			parsedURL, err := url.Parse(route.target.baseUrl)
 			if err != nil {
 				return fmt.Errorf(`Invalid replacement URL "%v": %v`, route.target.baseUrl, err)
