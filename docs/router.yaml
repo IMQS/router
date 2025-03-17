@@ -1,0 +1,11 @@
+openapi: 3.0.3
+info:
+  title: Router APIs
+  description:
+  version: 1.0.0
+servers:
+  - url: 'https'
+paths:
+  /router/ping:
+    get:
+      summary: Status endpoint for router
