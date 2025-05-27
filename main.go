@@ -58,6 +58,16 @@ func realMain() (result int) {
 		return
 	}
 
+	envHttpsPort := os.Getenv("HTTPS_PORT")
+	if envHttpsPort != "" {
+		port, err := strconv.ParseInt(envHttpsPort, 10, 64)
+		if err != nil {
+			panic(fmt.Errorf("Invalid HTTPS_PORT environment variable '%v'", envHttpsPort))
+		}
+		config.HTTP.HTTPSPort = uint16(port)
+		config.HTTP.EnableHTTPS = true
+	}
+
 	server, err := server.NewServer(config)
 	if err != nil {
 		panic(fmt.Errorf("Error starting server: %v", err))
