@@ -190,7 +190,7 @@ func (c *Config) verify() error {
 					return fmt.Errorf("URL target %v not defined", namedTarget)
 				}
 			}
-		} else if parseScheme(replace) == schemeUnknown {
+		} else if parseScheme(replace, nil) == schemeUnknown {
 			return fmt.Errorf("Unrecognized URL scheme (%v). Must be one of http://, https://, ws://, httpbridge://, {TARGET}", replace)
 		}
 	}
@@ -198,7 +198,7 @@ func (c *Config) verify() error {
 		if strings.ToUpper(name) != name {
 			return fmt.Errorf("Target names must be upper case (%v)", name)
 		}
-		if parseScheme(target.URL) == schemeUnknown {
+		if parseScheme(target.URL, nil) == schemeUnknown {
 			return fmt.Errorf("Unrecognized URL scheme (%v). Must be one of http://, https://, ws://, httpbridge://", target.URL)
 		}
 	}
