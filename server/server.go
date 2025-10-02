@@ -345,7 +345,7 @@ func (s *Server) ServeHTTP(isSecure bool, w http.ResponseWriter, req *http.Reque
 	}
 }
 
-// forwardHttpSse handles connections usinf server sent events (sse). Since we do not
+// forwardHttpSse handles connections using server sent events (sse). Since we do not
 // use ssl connections from our router to backend services we use what is known as
 // h2c which allows for clear text to be sent through a non ssl connection. This is
 // then copied back into the connections from the front-end. The reason that we use

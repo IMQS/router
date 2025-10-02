@@ -80,13 +80,15 @@ func parseScheme(targetUrl string, header *http.Header) scheme {
 		return schemeWS
 	case targetUrl[0:4] == "udp:":
 		return schemeUDP
-	case targetUrl[0:5] == "http:" && (header != nil && header.Get("Accept") == "text/event-stream"):
-		return schemeHTTPSSE
 	case targetUrl[0:5] == "http:":
+		if header != nil && header.Get("Accept") == "text/event-stream" {
+			return schemeHTTPSSE
+		}
 		return schemeHTTP
-	case targetUrl[0:6] == "https:" && (header != nil && header.Get("Accept") == "text/event-stream"):
-		return schemeHTTPSSSE
 	case targetUrl[0:6] == "https:":
+		if header != nil && header.Get("Accept") == "text/event-stream" {
+			return schemeHTTPSSSE
+		}
 		return schemeHTTPS
 	case targetUrl[0:11] == "httpbridge:":
 		return schemeHTTPBridge
