@@ -1,8 +1,11 @@
 package server
 
 import (
+	"bytes"
 	"compress/gzip"
 	"crypto/tls"
+	"encoding/base64"
+	"encoding/binary"
 	"fmt"
 	"io"
 	golog "log"
@@ -22,6 +25,7 @@ import (
 	"github.com/IMQS/serviceauth"
 	serviceconfig "github.com/IMQS/serviceconfigsgo"
 
+	"golang.org/x/net/http2"
 	"golang.org/x/net/websocket"
 	lumberjack "gopkg.in/natefinch/lumberjack.v2"
 )
@@ -322,7 +326,11 @@ func (s *Server) ServeHTTP(isSecure bool, w http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	switch parseScheme(newurl) {
+	switch parseScheme(newurl, &req.Header) {
+	case schemeHTTPSSE:
+		fallthrough
+	case schemeHTTPSSSE:
+		s.forwardHttpSse(w, req, newurl)
 	case schemeHTTP:
 		fallthrough
 	case schemeHTTPS:
@@ -334,6 +342,98 @@ func (s *Server) ServeHTTP(isSecure bool, w http.ResponseWriter, req *http.Reque
 	default:
 		s.errorLog.Errorf("Unrecognized scheme (%v) -> (%v)", req.RequestURI, newurl)
 		http.Error(w, "Unrecognized forwarding URL", http.StatusInternalServerError)
+	}
+}
+
+// forwardHttpSse handles connections using server sent events (sse). Since we do not
+// use ssl connections from our router to backend services we use what is known as
+// h2c which allows for clear text to be sent through a non ssl connection. This is
+// then copied back into the connections from the front-end. The reason that we use
+// ssl sse from the front-end is two fold:
+//  1. The ssl http2 sse event does not gobble up precious fe connections (https sse connections
+//     is limited on the front-end to 100 (not the 6 of http 1.1)
+//  2. this can be viewed as a lite weight single direction websocket where the only
+//     purpose is to keep the user informed of long running transaction (if they so choose)
+func (s *Server) forwardHttpSse(w http.ResponseWriter, req *http.Request, newurl string) {
+	cleaned, err := http.NewRequest(req.Method, newurl, nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Copy headers from client req into cleaned req, replacing Location header value if found.
+	copyheadersIn(req.Header, cleaned.Header)
+	cleaned.Proto = req.Proto
+	if remoteAddrNoPort, _, err := net.SplitHostPort(req.RemoteAddr); err == nil {
+		cleaned.Header.Add("X-Forwarded-For", remoteAddrNoPort)
+	}
+
+	s.addXOriginalPath(req, cleaned)
+
+	settings := []http2.Setting{
+		{ID: http2.SettingMaxConcurrentStreams, Val: 10},
+		{ID: http2.SettingInitialWindowSize, Val: 65535},
+	}
+	settingsBuf := &bytes.Buffer{}
+	for _, s := range settings {
+		binary.Write(settingsBuf, binary.BigEndian, s.ID)
+		binary.Write(settingsBuf, binary.BigEndian, s.Val)
+	}
+	settingsPayload := base64.RawURLEncoding.EncodeToString(settingsBuf.Bytes())
+
+	cleaned.Header.Add("Accept", "text/event-stream")
+	cleaned.Header.Set("Connection", "Upgrade, HTTP2-Settings")
+	cleaned.Header.Set("Upgrade", "h2c")
+	cleaned.Header.Set("HTTP2-Settings", settingsPayload)
+
+	client := &http.Client{
+		Timeout: (20 * time.Minute),
+	}
+
+	srvResp, err := client.Do(cleaned)
+	if err != nil {
+		s.errorLog.Info(fmt.Sprintf("Error on client Do %v\n", err))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer srvResp.Body.Close()
+
+	// Copy headers from response into w, replacing Location header value back to original if found.
+	copyHeaders(srvResp.Header, w.Header())
+	w.WriteHeader(srvResp.StatusCode)
+
+	buffer := make([]byte, 255)
+	for {
+		select {
+		case <-req.Context().Done():
+			// Request closed by client
+			return
+		default:
+			n, err := srvResp.Body.Read(buffer[0:])
+			if err != nil {
+				if err == io.EOF {
+					return
+				}
+				s.errorLog.Info("Could not read sse body " + err.Error())
+				return
+			}
+			_, err = fmt.Fprintf(w, "%v", string(buffer[:n]))
+			if err != nil {
+				s.errorLog.Info("Could not write to sse front end " + err.Error())
+				return
+			}
+
+			// TODO: replace apache logging with slog.
+			// This, and the change in IMQS/go-apachelog is required to get to the underlying
+			// ResponseWriter to flush the interface,
+			if apRec, ok := w.(*apachelog.Record); ok {
+				if fl, ok := apRec.ResponseWriter.(http.Flusher); ok {
+					fl.Flush()
+				} else {
+					s.errorLog.Info("Could not get flusher in formwardHTTPSSe")
+				}
+			}
+		}
 	}
 }
 
@@ -363,11 +463,11 @@ func (s *Server) forwardHttp(w http.ResponseWriter, req *http.Request, newurl st
 		return
 	}
 
-	srcHost := req.Host     // Client address.
-	dstHost := cleaned.Host // Destination address, e.g. 127.0.0.1:5984.
+	// srcHost := req.Host     // Client address.
+	// dstHost := cleaned.Host // Destination address, e.g. 127.0.0.1:5984.
 
 	// Copy headers from client req into cleaned req, replacing Location header value if found.
-	copyheadersIn(srcHost, req.Header, dstHost, cleaned.Header)
+	copyheadersIn(req.Header, cleaned.Header)
 	cleaned.Proto = req.Proto
 	cleaned.ContentLength = req.ContentLength
 
@@ -458,7 +558,7 @@ func (s *Server) forwardWebsocket(w http.ResponseWriter, req *http.Request, newu
 			s.errorLog.Errorf("Error with websocket.DialConfig: %v\n", errOpen)
 			return
 		}
-		copy := func(fromSocket *websocket.Conn, toSocket *websocket.Conn, toBackend bool, done chan bool) {
+		copy := func(fromSocket *websocket.Conn, toSocket *websocket.Conn, done chan bool) {
 
 			for {
 				var data string
@@ -481,9 +581,9 @@ func (s *Server) forwardWebsocket(w http.ResponseWriter, req *http.Request, newu
 		}
 
 		tobackend := make(chan bool)
-		go copy(con, backend, true, tobackend)
+		go copy(con, backend, tobackend)
 		frombackend := make(chan bool)
-		go copy(backend, con, false, frombackend)
+		go copy(backend, con, frombackend)
 		<-tobackend
 		<-frombackend
 	}
@@ -581,7 +681,7 @@ func copyCookieToMSHTTP(org *http.Cookie) *http.Cookie {
 	return c
 }
 
-func copyheadersIn(srcHost string, src http.Header, dstHost string, dst http.Header) {
+func copyheadersIn(src http.Header, dst http.Header) {
 	for k, vv := range src {
 		for _, v := range vv {
 			if k == "Connection" && v == "close" {

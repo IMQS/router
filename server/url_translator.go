@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"regexp"
 	"sort"
@@ -20,7 +21,9 @@ const (
 	schemeUnknown    scheme = ""
 	schemeWS                = "ws"
 	schemeHTTP              = "http"
+	schemeHTTPSSE           = "httpsse"
 	schemeHTTPS             = "https"
+	schemeHTTPSSSE          = "httpssse"
 	schemeHTTPBridge        = "httpbridge"
 	schemeUDP               = "udp"
 )
@@ -71,15 +74,21 @@ type route struct {
 	validHosts []*regexp.Regexp // If not empty, then the target hostname must be one of these regexes
 }
 
-func parseScheme(targetUrl string) scheme {
+func parseScheme(targetUrl string, header *http.Header) scheme {
 	switch {
 	case targetUrl[0:3] == "ws:":
 		return schemeWS
 	case targetUrl[0:4] == "udp:":
 		return schemeUDP
 	case targetUrl[0:5] == "http:":
+		if header != nil && header.Get("Accept") == "text/event-stream" {
+			return schemeHTTPSSE
+		}
 		return schemeHTTP
 	case targetUrl[0:6] == "https:":
+		if header != nil && header.Get("Accept") == "text/event-stream" {
+			return schemeHTTPSSSE
+		}
 		return schemeHTTPS
 	case targetUrl[0:11] == "httpbridge:":
 		return schemeHTTPBridge
@@ -88,7 +97,7 @@ func parseScheme(targetUrl string) scheme {
 }
 
 func (r *route) scheme() scheme {
-	return parseScheme(r.target.baseUrl)
+	return parseScheme(r.target.baseUrl, nil)
 }
 
 func (r *route) isHostValid(newURL *url.URL) bool {
