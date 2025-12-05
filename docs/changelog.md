@@ -1,5 +1,9 @@
 # Changelog
 
+## v3.5.0
+
+* feat: Adds forwardHTTPSSE (ASG-4475, CT-1121)
+
 ## v3.4.0
 
 * feat: Adds HTTPS_PORT env var to override config (ASG-4628)
