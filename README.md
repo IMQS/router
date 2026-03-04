@@ -18,3 +18,8 @@ We needed a performant and well-behaved front door to all of our services which
 could forward HTTP as well as Websockets. Nginx fits this bill, but since we
 need to run on Windows, Nginx is a non-starter. We tried for some time to get
 Apache to do this job, but we failed to get Apache to robustly forward websockets.
+
+Testing
+-------
+For instructions on testing CORS settings using the included utilities,
+see [test/README.md](test/README.md).
