@@ -457,6 +457,21 @@ the response was sent. This would then result in s.httpTransport.RoundTrip(clean
 an EOF error when it tried to re-use that TCP connection.
 */
 func (s *Server) forwardHttp(w http.ResponseWriter, req *http.Request, newurl string) {
+	// Set the Access-Control-Allow-Origin header, based on allow-list
+	_, ok := s.configHttp.Origins[req.Header.Get("Origin")]
+	if ok {
+		w.Header().Set("Access-Control-Allow-Origin", req.Header.Get("Origin"))
+
+		// Handle preflight OPTIONS requests
+		if req.Method == "OPTIONS" {
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+	}
+
 	cleaned, err := http.NewRequest(req.Method, newurl, req.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

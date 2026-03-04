@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CORS Test Utility</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2em; }
+        input, button { font-size: 1em; margin: 0.5em 0; }
+        #result { margin-top: 1em; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <h2>CORS Test Utility</h2>
+    <label for="url">Remote Server URL:</label>
+    <input type="text" id="url" size="50" placeholder="https://your-server.com/api/test">
+    <button onclick="testCORS()">Test CORS</button>
+    <div id="result"></div>
+    <script>
+        function testCORS() {
+            const url = document.getElementById('url').value;
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = 'Testing...';
+            fetch(url, { method: 'GET', mode: 'cors' })
+                .then(response => {
+                    resultDiv.textContent = `Status: ${response.status}\nCORS appears to be working.`;
+                    return response.text();
+                })
+                .then(text => {
+                    resultDiv.textContent += `\nResponse Body:\n${text}`;
+                })
+                .catch(error => {
+                    resultDiv.textContent = `Error: ${error}\nLikely a CORS issue or network error.`;
+                });
+        }
+    </script>
+</body>
+</html>
+
