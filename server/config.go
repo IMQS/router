@@ -106,6 +106,7 @@ type ConfigHTTP struct {
 	ResponseHeaderTimeout int
 	RedirectHTTP          bool
 	AutomaticGzip         automaticGzip
+	Origins               map[string]struct{}
 }
 
 type ConfigRoute struct {

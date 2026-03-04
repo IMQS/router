@@ -1,6 +1,7 @@
 package server
 
 import (
+	"gotest.tools/v3/assert"
 	"net/http"
 	"net/url"
 	"testing"
@@ -147,4 +148,45 @@ func TestInvalidRoutes(t *testing.T) {
 		"Routes": {
 			"/albjs/extile/(.*)": 123
 	}}`, "Match /albjs/extile/(.*) has invalid value type. Must be either a string, or an object with 'Target' and 'ValidHosts'")
+}
+
+func TestOrigins(t *testing.T) {
+	jsonString := `{
+  "HTTP": {
+    "Origins": {}
+  }
+}`
+	routerConf := &Config{}
+	err := routerConf.LoadString(jsonString)
+	assert.NilError(t, err)
+	assert.Equal(t, len(routerConf.HTTP.Origins), 0)
+	_, ok := routerConf.HTTP.Origins["https://example.com"]
+	assert.Equal(t, ok, false)
+
+	jsonString = `{
+  "HTTP": {
+    "Origins": {
+      "https://example.com" : {}
+    }
+  }
+}`
+	routerConf = &Config{}
+	err = routerConf.LoadString(jsonString)
+	assert.NilError(t, err)
+	assert.Equal(t, len(routerConf.HTTP.Origins), 1)
+	_, ok = routerConf.HTTP.Origins["https://example.com"]
+	assert.Equal(t, ok, true)
+	_, ok = routerConf.HTTP.Origins["https://example-bad.com"]
+	assert.Equal(t, ok, false)
+
+	// null test
+	jsonString = `{
+  "HTTP": {}
+}`
+	routerConf = &Config{}
+	err = routerConf.LoadString(jsonString)
+	assert.NilError(t, err)
+	assert.Equal(t, len(routerConf.HTTP.Origins), 0)
+	_, ok = routerConf.HTTP.Origins["https://example.com"]
+	assert.Equal(t, ok, false)
 }

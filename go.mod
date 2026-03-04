@@ -10,9 +10,11 @@ require (
 	github.com/IMQS/serviceconfigsgo v1.4.0
 	golang.org/x/net v0.29.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
+	gotest.tools/v3 v3.5.1
 )
 
 require (
+	github.com/google/go-cmp v0.5.9 // indirect
 	golang.org/x/sys v0.25.0 // indirect
 	golang.org/x/text v0.18.0 // indirect
 )
