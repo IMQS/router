@@ -462,6 +462,7 @@ func (s *Server) forwardHttp(w http.ResponseWriter, req *http.Request, newurl st
 	_, ok := s.configHttp.Origins[req.Header.Get("Origin")]
 	if ok {
 		w.Header().Set("Access-Control-Allow-Origin", req.Header.Get("Origin"))
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 		// Handle preflight OPTIONS requests
 		if req.Method == "OPTIONS" {
@@ -470,7 +471,6 @@ func (s *Server) forwardHttp(w http.ResponseWriter, req *http.Request, newurl st
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		w.Header().Set("Access-Control-Allow-Credentials", "true")
 	}
 
 	cleaned, err := http.NewRequest(req.Method, newurl, req.Body)
