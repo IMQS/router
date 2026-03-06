@@ -458,6 +458,7 @@ an EOF error when it tried to re-use that TCP connection.
 */
 func (s *Server) forwardHttp(w http.ResponseWriter, req *http.Request, newurl string) {
 	// Set the Access-Control-Allow-Origin header, based on allow-list
+	s.errorLog.Infof("Forwarding from \"%v\"", req.Header.Get("Origin"))
 	_, ok := s.configHttp.Origins[req.Header.Get("Origin")]
 	if ok {
 		w.Header().Set("Access-Control-Allow-Origin", req.Header.Get("Origin"))
