@@ -1,6 +1,5 @@
 pkg
 bin
-.hg
 *.sublime-project
 *.sublime-workspace
 *.log
@@ -12,3 +11,5 @@ router/router-error-test.log
 .idea
 /router.exe
 router
+**/*.exe
+**/cors
