@@ -22,4 +22,4 @@ Apache to do this job, but we failed to get Apache to robustly forward websocket
 Testing
 -------
 For instructions on testing CORS settings using the included utilities,
-see [test/README.md](test/README.md).
+see [test/cors/README.md](test/cors/README.md).

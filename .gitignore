@@ -12,3 +12,4 @@ router/router-error-test.log
 /router.exe
 router
 **/*.exe
+**/cors
