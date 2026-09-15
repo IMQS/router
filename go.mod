@@ -7,7 +7,7 @@ require (
 	github.com/IMQS/gowinsvc v1.2.0
 	github.com/IMQS/log v1.4.0
 	github.com/IMQS/serviceauth v1.4.0
-	github.com/IMQS/serviceconfigsgo v1.4.0
+	github.com/IMQS/serviceconfigsgo v1.9.0
 	golang.org/x/net v0.29.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gotest.tools/v3 v3.5.1

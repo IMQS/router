@@ -203,7 +203,7 @@ func fetchCerts(certPath, certKeyPath string) error {
 	}
 
 	//fetch the file contents and store them in the paths supplied
-	bytes, err := serviceconfig.GetConfigJson("", serviceName, serviceConfigVersion, filepath.Base(certPath), false)
+	bytes, err := serviceconfig.GetConfigFile("", serviceName, serviceConfigVersion, filepath.Base(certPath), false)
 	if err != nil {
 		return err
 	}
@@ -212,7 +212,7 @@ func fetchCerts(certPath, certKeyPath string) error {
 		return err
 	}
 
-	bytes, err = serviceconfig.GetConfigJson("", serviceName, serviceConfigVersion, filepath.Base(certKeyPath), false)
+	bytes, err = serviceconfig.GetConfigFile("", serviceName, serviceConfigVersion, filepath.Base(certKeyPath), false)
 	if err != nil {
 		return err
 	}
