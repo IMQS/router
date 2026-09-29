@@ -1,5 +1,14 @@
 # Changelog
 
+## v3.5.2
+
+* chore: Updates serviceconfigsgo dependency to v1.9.0 and refactor config
+fetching method
+
+## v3.5.1
+
+* feat: CORS support (ASG-5216)
+
 ## v3.5.0
 
 * feat: Adds forwardHTTPSSE (ASG-4475, CT-1121)
